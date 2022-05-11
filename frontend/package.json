@@ -1,0 +1,17 @@
+{
+  "name": "js-bridge",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^2.8.0"
+  },
+  "dependencies": {
+    "dsbridge": "^3.1.4",
+    "js-base64": "^3.7.2"
+  }
+}
