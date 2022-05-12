@@ -33,17 +33,18 @@ function invokeNative(moduleName,funcName,rawArgs){
     const args=[]
     for(let i=0;i<rawArgs.length;i++){
         const obj=rawArgs[i]
-        if(obj instanceof Function){
+        const constructor=obj.constructor
+        if(constructor === Function){
             //保存回调
             const name=`${FUNCTION_PREFIX}${randomString(16)}`
             functionMap[name]=obj
             args.push(name)
-        }else if(obj instanceof Object){
+        }else if(constructor === Object){
             //保存object
             const name=`${OBJECT_PREFIX}${randomString(16)}`
             objectMap[name]=obj
             args.push(name)
-        }else if(obj instanceof Uint8Array){
+        }else if(constructor === Uint8Array){
             //字节数组 转为字符串
             const data=encode(obj)
             args.push(`${BYTEARRAY_PREFIX}${data}`)
@@ -53,7 +54,7 @@ function invokeNative(moduleName,funcName,rawArgs){
         }
     }
     //window.Bridge.invoke 调用native方法
-    return window.bridge.call(moduleName,funcName,JSON.stringify(args))
+    return window.bridge.callService(moduleName,funcName,JSON.stringify(args))
 }
 
 /**
@@ -130,24 +131,18 @@ function createApi(name,funcList=[]){
 
 //服务存储
 let api={}
-//初始化回调
-let initCallback=undefined
+let hasInit=false
 
 /**
- * 初始化完成 native调用 触发完成
+ * 返回一个方法 当bridge初始化完成后接收回调
  */
-window.initDone=function(){
-    console.log("log:init done")
-    if(initCallback){
-        initCallback(api)
-        initCallback=null
+export default function (){
+    if(!hasInit){
+        const apiMap=JSON.parse(window.bridge.getServices())
+        for(const key in apiMap){
+            api[key]=createApi(key,apiMap[key])
+        }
+        hasInit=true
     }
-}
-const apiMap=JSON.parse(window.bridge.init())
-for(const key in apiMap){
-    api[key]=createApi(key,apiMap[key])
-}
-
-export default function (callback){
-    callback(api)
+    return api
 }

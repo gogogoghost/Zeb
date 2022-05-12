@@ -30,12 +30,12 @@ class Zebview: WebView {
         addJavascriptInterface(this,"bridge")
     }
 
-    private val apiMap=HashMap<String, Api>()
+    private val serviceMap=HashMap<String, Service>()
 
     //添加一个api服务
-    fun addApi(name:String,obj:Any): Zebview {
-        Api(obj).also {
-            apiMap[name]=it
+    fun addService(name:String, obj:Any): Zebview {
+        Service(obj).also {
+            serviceMap[name]=it
             //向js注册该方法
             val list= JSONArray()
             it.funcList().forEach { func->
@@ -45,10 +45,13 @@ class Zebview: WebView {
         return this
     }
 
+    /**
+     * js调用init获取所有服务
+     */
     @JavascriptInterface
-    fun init():String{
+    fun getServices():String{
         val map= JSONObject()
-        apiMap.forEach {
+        serviceMap.forEach {
             val list= JSONArray()
             it.value.funcList().forEach { func->
                 list.put(func)
@@ -58,10 +61,13 @@ class Zebview: WebView {
         return map.toString(0)
     }
 
+    /**
+     * js主动调用服务api
+     */
     @JavascriptInterface
-    fun call(module:String,func:String,args:String):Any?{
-        if(apiMap.containsKey(module)){
-            val api=apiMap[module]!!
+    fun callService(module:String,func:String,args:String):Any?{
+        if(serviceMap.containsKey(module)){
+            val api=serviceMap[module]!!
             if(api.hasFunc(func)){
                 return api.call(func,args)
             }else{
@@ -74,9 +80,9 @@ class Zebview: WebView {
     }
 
     /**
-     * Api class
+     * Service class
      */
-    private inner class Api(private val obj: Any) {
+    private inner class Service(private val obj: Any) {
 
         private val funcMap = HashMap<String, Method>()
 
@@ -101,53 +107,32 @@ class Zebview: WebView {
         fun call(name: String, jsonString: String): Any? {
             //js调用java方法，将js对象转为java对象
             val method = funcMap[name]!!
+            //接受到的参数转为json array
             val argsList = JSONArray(jsonString)
+            //实际传递给api的参数
             val argsArray = ArrayList<Any>()
             for (i in 0 until argsList.length()) {
+                //参数对象
                 val args = argsList.get(i)
+                //参数对象名称 用于先判断是否为特殊对象
                 val argsString = args.toString()
                 if (argsString.startsWith(FUNCTION_PREFIX)) {
                     //方法回调
-                    argsArray.add(object : Callback() {
-                        override fun call(array:JSONArray) {
-                            runMain {
-                                this@Zebview.evaluateJavascript(
-                                    "window.invokeCallback(\"$argsString\",\"${array}\")",
-                                    null
-                                )
-                            }
-                        }
-
-                        override fun release() {
-                            runMain {
-                                this@Zebview.evaluateJavascript("window.releaseCallback(\"$argsString\")", null)
-                            }
-                        }
-                    })
+                    argsArray.add(Callback(this@Zebview,argsString))
                 } else if (argsString.startsWith(OBJECT_PREFIX)) {
                     //带有回调的对象
-                    argsArray.add(object : CallbackObject() {
-                        override fun call(funcName: String, args:JSONArray) {
-                            val str="window.invokeObjectCallback(\"$argsString\",\"${funcName}\",\"${args.toString().replace("\"","\\\"")}\")"
-                            runMain {
-                                this@Zebview.evaluateJavascript(
-                                    str,
-                                    null
-                                )
-                            }
-                        }
-                        override fun release() {
-                            runMain {
-                                this@Zebview.evaluateJavascript("window.releaseObject(\"$argsString\")", null)
-                            }
-                        }
-                    })
+                    argsArray.add( CallbackObject(this@Zebview,argsString))
                 } else if (argsString.startsWith(BYTEARRAY_PREFIX)) {
                     //字节数组
                     val bytes = Base64.decode(argsString.substring(BYTEARRAY_PREFIX.length), Base64.NO_WRAP)
                     argsArray.add(bytes)
+                } else if (args is JSONArray){
+                    //数组 转换为Array<Any>
+                    argsArray.add(Array(args.length()){
+                        args.get(it)
+                    })
                 } else {
-                    //普通数据
+                    //普通数据 直接传递
                     argsArray.add(args)
                 }
             }

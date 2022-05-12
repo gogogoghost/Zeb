@@ -1,70 +1,24 @@
-import './style.css'
-import bridge from './bridge'
+import getService from './bridge'
 
-document.querySelector('#app').innerHTML = `
-  <h1></h1>
-  <a href="https://vitejs.dev/guide/features.html" target="_blank">Documentation</a>
-`
-
-function uint8ArrayToString(fileData){
-    var dataString = "";
-    for (var i = 0; i < fileData.length; i++) {
-        dataString += String.fromCharCode(fileData[i]);
-    }
-    return dataString
-}
-
-bridge((api)=>{
-
-    console.log("exec")
-    console.log(api)
-
-    return
-
-    api.barcode.init()
-
-    api.barcode.registerCallback({
-        onScan(bytes){
-            console.log(bytes)
+const api=getService()
+console.log(api)
+api.JavaService.doSomething(
+    789,
+    "string from js",
+    false,
+    [123456,true,"string in array of js"],
+    function(argInt,argStr,argBool,argArr){
+        console.log(argInt,argStr,argBool,argArr)
+    },
+    {
+        success(str){
+            console.log("success:"+str)
         },
-        onTimeout(){
-            console.log("timeout!!!!!")
+        fail(){
+
         },
-        onError(){
+        func(){
 
         }
-    })
-
-    document.querySelector('#start').onclick=()=>{
-        api.barcode.startDecode(10000)
     }
-    document.querySelector('#stop').onclick=()=>{
-        api.barcode.stopDecode()
-    }
-
-    api.iccReader.init()
-    api.iccReader.registerCallback({
-        onRead(card){
-            console.log("read:")
-            console.log(card)
-        },
-        onTimeout(){
-            console.log("timeout")
-        },
-        onError(){
-            console.log("error")
-        },
-        onReadWithNoSupportCard(){
-            console.log("no support")
-        },
-        onEject(){
-            console.log("eject card")
-        }
-    })
-    document.querySelector("#icc_start").onclick=()=>{
-        api.iccReader.startReadCard(10000)
-    }
-    document.querySelector("#icc_eject").onclick=()=>{
-        api.iccReader.ejectCard()
-    }
-})
+)

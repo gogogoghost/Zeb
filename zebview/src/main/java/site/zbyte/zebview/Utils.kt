@@ -1,18 +1,8 @@
 package site.zbyte.zebview
 
-import android.os.Handler
-import android.os.Looper
 import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
-
-fun runMain(block: () -> Unit) {
-    if (Looper.myLooper() == Looper.getMainLooper()) {
-        block()
-    } else {
-        Handler(Looper.getMainLooper()).post { block() }
-    }
-}
 
 fun Any.toJson():JSONObject{
     val obj=JSONObject()
@@ -33,6 +23,14 @@ fun processArg(obj:Any?):Any?{
     return when(obj){
         null->{
             null
+        }
+        is Array<*> ->{
+            //转成JSONArray
+            JSONArray().also { arr->
+                obj.forEach {
+                    arr.put(it)
+                }
+            }
         }
         is ByteArray->{
             "${Zebview.BYTEARRAY_PREFIX}${Base64.encodeToString(obj, Base64.NO_WRAP)}"
