@@ -2,12 +2,16 @@ package site.zbyte.zebview
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.webkit.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewAssetLoader
 
+private val handler=Handler(Looper.getMainLooper())
 
 class MainActivity : AppCompatActivity() {
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +49,7 @@ class MainActivity : AppCompatActivity() {
 
 //        zv.loadUrl("https://appassets.androidplatform.net/assets/index.html")
         zv.loadUrl("http://192.168.0.137:3000")
+        println(Thread.currentThread())
     }
 }
 
@@ -58,13 +63,16 @@ object JavaService{
         argCallback:Callback,
         argObject:CallbackObject
     ){
+        println(Thread.currentThread())
         println("$argInt $argStr $argBool")
         argArr.forEach {
             println(it)
         }
-        argCallback.call(123456,"test string",true, arrayOf(456798,"string in array",false))
-        argObject.call("success","I am in object")
-        argCallback.release()
-        argObject.release()
+        handler.post {
+            argCallback.call(123456,"test string",true, arrayOf(456798,"string in array",false))
+            argObject.call("success","I am in object")
+            argCallback.release()
+            argObject.release()
+        }
     }
 }
