@@ -1,4 +1,4 @@
-package site.zbyte.zebview
+package site.zbyte.app
 
 import android.annotation.SuppressLint
 import android.os.Bundle
@@ -7,6 +7,9 @@ import android.os.Looper
 import android.webkit.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewAssetLoader
+import site.zbyte.zebview.Callback
+import site.zbyte.zebview.CallbackObject
+import site.zbyte.zebview.Zebview
 
 private val handler=Handler(Looper.getMainLooper())
 
@@ -21,7 +24,7 @@ class MainActivity : AppCompatActivity() {
 
         val zv=findViewById<Zebview>(R.id.zv)
 
-        zv.addService("JavaService",JavaService)
+        zv.addService("JavaService", JavaService)
 
         zv.clearCache(true)
 
@@ -60,8 +63,8 @@ object JavaService{
         argStr:String,
         argBool:Boolean,
         argArr:Array<Any>,
-        argCallback:Callback,
-        argObject:CallbackObject
+        argCallback: Callback,
+        argObject: CallbackObject
     ){
         println(Thread.currentThread())
         println("$argInt $argStr $argBool")
