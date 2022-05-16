@@ -7,9 +7,10 @@ import android.os.Looper
 import android.webkit.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewAssetLoader
+import org.json.JSONObject
 import site.zbyte.zebview.Callback
 import site.zbyte.zebview.CallbackObject
-import site.zbyte.zebview.Zebview
+import site.zbyte.zebview.ZebView
 
 private val handler=Handler(Looper.getMainLooper())
 
@@ -22,9 +23,9 @@ class MainActivity : AppCompatActivity() {
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
 
-        val zv=findViewById<Zebview>(R.id.zv)
+        val zv=findViewById<ZebView>(R.id.zv)
 
-        zv.addService("JavaService", JavaService)
+        zv.addService("TestService", TestService)
 
         zv.clearCache(true)
 
@@ -45,6 +46,9 @@ class MainActivity : AppCompatActivity() {
                 return res
             }
         }
+        //设置回调线程
+        zv.setCallbackHandler(Handler(Looper.getMainLooper()))
+
         val webViewSettings: WebSettings = zv.settings
         webViewSettings.javaScriptEnabled=true
         webViewSettings.allowFileAccess=false
@@ -52,30 +56,31 @@ class MainActivity : AppCompatActivity() {
 
 //        zv.loadUrl("https://appassets.androidplatform.net/assets/index.html")
         zv.loadUrl("http://192.168.0.137:3000")
-        println(Thread.currentThread())
     }
 }
 
-object JavaService{
+object TestService{
     @JavascriptInterface
-    fun doSomething(
+    fun test(
         argInt:Int,
         argStr:String,
         argBool:Boolean,
         argArr:Array<Any>,
+        argObj:JSONObject,
         argCallback: Callback,
         argObject: CallbackObject
     ){
         println(Thread.currentThread())
         println("$argInt $argStr $argBool")
+        println(argObj.toString())
         argArr.forEach {
             println(it)
         }
-        handler.post {
-            argCallback.call(123456,"test string",true, arrayOf(456798,"string in array",false))
-            argObject.call("success","I am in object")
-            argCallback.release()
-            argObject.release()
-        }
+        argCallback.call(123456,"test string",true, arrayOf(456798,"string in array",false))
+        val obj=JSONObject()
+        obj.put("name","Jack")
+        argObject.call("success",obj)
+        argCallback.release()
+        argObject.release()
     }
 }

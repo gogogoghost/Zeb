@@ -40,10 +40,16 @@ function invokeNative(moduleName,funcName,rawArgs){
             functionMap[name]=obj
             args.push(name)
         }else if(constructor === Object){
-            //保存object
-            const name=`${OBJECT_PREFIX}${randomString(16)}`
-            objectMap[name]=obj
-            args.push(name)
+            //判断object是否包含function
+            if(Object.values(obj).find((v)=>v.constructor===Function)){
+                //回调对象 保存object
+                const name=`${OBJECT_PREFIX}${randomString(16)}`
+                objectMap[name]=obj
+                args.push(name)
+            }else{
+                //普通对象 传递数据
+                args.push(obj)
+            }
         }else if(constructor === Uint8Array){
             //字节数组 转为字符串
             const data=encode(obj)
@@ -54,7 +60,7 @@ function invokeNative(moduleName,funcName,rawArgs){
         }
     }
     //window.Bridge.invoke 调用native方法
-    return window.bridge.callService(moduleName,funcName,JSON.stringify(args))
+    return window.zebview.callService(moduleName,funcName,JSON.stringify(args))
 }
 
 /**
@@ -138,7 +144,10 @@ let hasInit=false
  */
 export default function (){
     if(!hasInit){
-        const apiMap=JSON.parse(window.bridge.getServices())
+        if(!window.zebview){
+            return null
+        }
+        const apiMap=JSON.parse(window.zebview.getServices())
         for(const key in apiMap){
             api[key]=createApi(key,apiMap[key])
         }

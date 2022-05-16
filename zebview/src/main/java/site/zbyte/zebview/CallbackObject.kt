@@ -3,7 +3,7 @@ package site.zbyte.zebview
 import org.json.JSONArray
 
 class CallbackObject(
-    private val zv: Zebview,
+    private val zv: ZebView,
     private val objectToken:String) {
 
     /**

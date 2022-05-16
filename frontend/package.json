@@ -1,7 +1,8 @@
 {
-  "name": "js-bridge",
-  "private": true,
-  "version": "0.0.0",
+  "name": "zebview-bridge",
+  "description": "Javascript bridge for Zebview which is a Android webview library",
+  "version": "0.1.0",
+  "main": "bridge.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,7 +12,6 @@
     "vite": "^2.8.0"
   },
   "dependencies": {
-    "dsbridge": "^3.1.4",
     "js-base64": "^3.7.2"
   }
 }

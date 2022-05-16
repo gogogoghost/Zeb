@@ -33,7 +33,7 @@ fun processArg(obj:Any?):Any?{
             }
         }
         is ByteArray->{
-            "${Zebview.BYTEARRAY_PREFIX}${Base64.encodeToString(obj, Base64.NO_WRAP)}"
+            "${ZebView.BYTEARRAY_PREFIX}${Base64.encodeToString(obj, Base64.NO_WRAP)}"
         }
         //基本类型原样返回
         is Byte,is Short,is Int,is Long,is Float,is Double,is Boolean,is Char,is String->{

@@ -1,16 +1,18 @@
 package site.zbyte.zebview
 
 import android.content.Context
+import android.os.Handler
 import android.util.AttributeSet
 import android.util.Base64
 import android.util.Log
 import android.webkit.JavascriptInterface
+import android.webkit.ValueCallback
 import android.webkit.WebView
 import org.json.JSONArray
 import org.json.JSONObject
 import java.lang.reflect.Method
 
-class Zebview: WebView {
+class ZebView: WebView {
 
     companion object{
         private const val TAG="Zebview"
@@ -27,13 +29,31 @@ class Zebview: WebView {
     constructor(context: Context,attrs: AttributeSet,defStyle:Int):super(context, attrs, defStyle)
 
     init {
-        addJavascriptInterface(this,"bridge")
+        addJavascriptInterface(this,"zebview")
     }
 
     private val serviceMap=HashMap<String, Service>()
 
+    private var callbackHandler:Handler?=null
+
+    //调用java script
+    override fun evaluateJavascript(script: String, resultCallback: ValueCallback<String>?) {
+        if(callbackHandler==null){
+            super.evaluateJavascript(script, resultCallback)
+        }else{
+            handler.post{
+                super.evaluateJavascript(script, resultCallback)
+            }
+        }
+    }
+
+    //设置回调handler
+    fun setCallbackHandler(handler: Handler){
+        callbackHandler=handler
+    }
+
     //添加一个api服务
-    fun addService(name:String, obj:Any): Zebview {
+    fun addService(name:String, obj:Any): ZebView {
         Service(obj).also {
             serviceMap[name]=it
             //向js注册该方法
@@ -118,10 +138,10 @@ class Zebview: WebView {
                 val argsString = args.toString()
                 if (argsString.startsWith(FUNCTION_PREFIX)) {
                     //方法回调
-                    argsArray.add(Callback(this@Zebview,argsString))
+                    argsArray.add(Callback(this@ZebView,argsString))
                 } else if (argsString.startsWith(OBJECT_PREFIX)) {
                     //带有回调的对象
-                    argsArray.add( CallbackObject(this@Zebview,argsString))
+                    argsArray.add( CallbackObject(this@ZebView,argsString))
                 } else if (argsString.startsWith(BYTEARRAY_PREFIX)) {
                     //字节数组
                     val bytes = Base64.decode(argsString.substring(BYTEARRAY_PREFIX.length), Base64.NO_WRAP)

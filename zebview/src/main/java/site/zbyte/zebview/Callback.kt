@@ -6,7 +6,7 @@ import org.json.JSONArray
  * 描述一个js的回调方法
  */
 class Callback(
-    private val zv: Zebview,
+    private val zv: ZebView,
     private val functionToken: String
 ) {
 
