@@ -22,6 +22,8 @@ npm install zebview-bridge
 yarn add zebview-bridge
 ```
 
+Call service
+
 ```javascript
 //Import
 import getService from 'zebview-bridge'
