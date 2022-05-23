@@ -7,12 +7,15 @@ import { encode, decode } from 'js-base64';
 const FUNCTION_PREFIX="_func#"
 const OBJECT_PREFIX="_object#"
 const BYTEARRAY_PREFIX="_bytes#"
+const PROMISE_PREFIX="_promise#"
 
 
 //存储回调的map
 const functionMap={}
 //存储带有回调function的map
 const objectMap={}
+//存储待pending的promise
+const promiseMap={}
 
 //生成随机字符串
 function randomString(e) {
@@ -60,19 +63,41 @@ function invokeNative(moduleName,funcName,rawArgs){
         }
     }
     //window.Bridge.invoke 调用native方法
-    return window.zebview.callService(moduleName,funcName,JSON.stringify(args))
+    const res=window.zebview.callService(moduleName,funcName,JSON.stringify(args))
+    return processArgs(res)[0]
 }
 
 /**
- * 处理回调的参数
+ * 处理回调的参数 对象
+ */
+function processArg(obj){
+    console.log("=================",obj)
+    if(obj&&obj.constructor===String){
+        //对象不为null 且为字符串形式
+        if(obj.startsWith(BYTEARRAY_PREFIX)){
+            //字节数组
+            return decode(obj.substring(BYTEARRAY_PREFIX.length,obj.length))
+        }else if(obj.startsWith(PROMISE_PREFIX)){
+            //promise
+            const id=obj.substring(PROMISE_PREFIX.length,obj.length)
+            return new Promise((resolve,reject)=>{
+                promiseMap[id]={
+                    resolve,
+                    reject
+                }
+            })
+        }
+    }
+    return obj
+}
+
+/**
+ * 处理回调的参数 数组
  */
 function processArgs(argsString){
     const args=JSON.parse(argsString)
     for(let i=0;i<args.length;i++){
-        const obj=args[i]
-        if(obj&&obj.startsWith&&obj.startsWith(BYTEARRAY_PREFIX)){
-            args[i]=decode(obj.substring(BYTEARRAY_PREFIX.length,obj.length))
-        }
+        args[i]=processArg(args[i])
     }
     return args
 }
@@ -96,6 +121,23 @@ window.invokeObjectCallback=function(name,funcName,argsString){
     const func=(objectMap[name]||{})[funcName]
     if(func){
         func(...processArgs(argsString))
+    }
+}
+
+/**
+ * native回调js中的promise
+ */
+window.finalizePromise=function(id,isSuccess,argsString){
+    console.log("log:invoke promise:"+arguments)
+    const obj=promiseMap[id]
+    if(obj){
+        const args=processArgs(argsString)
+        if(isSuccess){
+            obj.resolve(args[0])
+        }else{
+            obj.reject(args[0])
+        }
+        delete promiseMap[id]
     }
 }
 

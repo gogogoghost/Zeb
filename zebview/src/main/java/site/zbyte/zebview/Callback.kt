@@ -14,7 +14,7 @@ class Callback(
      * 调用该回调方法
      */
     fun call(vararg args:Any){
-        call(processArgs(*args))
+        call(processArgs(zv,*args))
     }
 
     /**

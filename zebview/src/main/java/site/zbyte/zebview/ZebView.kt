@@ -2,6 +2,7 @@ package site.zbyte.zebview
 
 import android.content.Context
 import android.os.Handler
+import android.os.HandlerThread
 import android.util.AttributeSet
 import android.util.Base64
 import android.util.Log
@@ -20,6 +21,7 @@ class ZebView: WebView {
         const val FUNCTION_PREFIX = "_func#"
         const val OBJECT_PREFIX = "_object#"
         const val BYTEARRAY_PREFIX = "_bytes#"
+        const val PROMISE_PREFIX = "_promise#"
     }
 
     constructor(context: Context):super(context)
@@ -28,13 +30,18 @@ class ZebView: WebView {
 
     constructor(context: Context,attrs: AttributeSet,defStyle:Int):super(context, attrs, defStyle)
 
-    init {
-        addJavascriptInterface(this,"zebview")
-    }
-
     private val serviceMap=HashMap<String, Service>()
 
     private var callbackHandler:Handler?=null
+
+    private val handlerThread=HandlerThread("promise").also {
+        it.start()
+    }
+    private val promiseHandler=Handler(handlerThread.looper)
+
+    init {
+        addJavascriptInterface(this,"zebview")
+    }
 
     //调用java script
     override fun evaluateJavascript(script: String, resultCallback: ValueCallback<String>?) {
@@ -50,6 +57,11 @@ class ZebView: WebView {
     //设置回调handler
     fun setCallbackHandler(handler: Handler){
         callbackHandler=handler
+    }
+
+    //获取回调handler
+    fun getPromiseHandler():Handler{
+        return promiseHandler
     }
 
     //添加一个api服务
@@ -85,18 +97,18 @@ class ZebView: WebView {
      * js主动调用服务api
      */
     @JavascriptInterface
-    fun callService(module:String,func:String,args:String):Any?{
+    fun callService(module:String,func:String,args:String):String{
         if(serviceMap.containsKey(module)){
             val api=serviceMap[module]!!
             if(api.hasFunc(func)){
-                return api.call(func,args)
+                return api.call(func,args).toString()
             }else{
                 Log.w(TAG,"Function:${func} in module:${module} is not found")
             }
         }else{
             Log.w(TAG,"Module:${module} is not found")
         }
-        return null
+        return "[]"
     }
 
     /**
@@ -124,7 +136,7 @@ class ZebView: WebView {
             return funcMap.containsKey(name)
         }
 
-        fun call(name: String, jsonString: String): Any? {
+        fun call(name: String, jsonString: String): JSONArray {
             //js调用java方法，将js对象转为java对象
             val method = funcMap[name]!!
             //接受到的参数转为json array
@@ -157,7 +169,7 @@ class ZebView: WebView {
                 }
             }
             val res=method.invoke(obj, *argsArray.toTypedArray())
-            return processArg(res)
+            return processArgs(this@ZebView,res)
         }
     }
 }

@@ -19,6 +19,9 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("site.zbyte.zebview.test", appContext.packageName)
+        val promise=Promise<String>{
+            it.resolve("")
+        }
+        println(promise is Promise<*>)
     }
 }

@@ -19,7 +19,7 @@ fun Any.toJson():JSONObject{
 /**
  * JAVA对象转js对象
  */
-fun processArg(obj:Any?):Any?{
+fun processArg(zv:ZebView,obj:Any?):Any?{
     return when(obj){
         null->{
             null
@@ -39,6 +39,19 @@ fun processArg(obj:Any?):Any?{
         is Byte,is Short,is Int,is Long,is Float,is Double,is Boolean,is Char,is String->{
             obj
         }
+        //Promise
+        is Promise<*>->{
+            val res="${ZebView.PROMISE_PREFIX}${obj.id}"
+            //将zv对象注入
+            val zvFiled=obj.javaClass.getDeclaredField("zv")
+            zvFiled.isAccessible=true
+            zvFiled.set(obj,zv)
+            //注入完成 启动promise工作
+            val run=obj.javaClass.getDeclaredMethod("run")
+            run.isAccessible=true
+            run.invoke(obj)
+            res
+        }
         //其他数据 全部json序列化返回
         else -> {
             obj.toJson()
@@ -49,10 +62,18 @@ fun processArg(obj:Any?):Any?{
 /**
  * JAVA对象数组转js对象数组
  */
-fun processArgs(vararg args:Any): JSONArray {
+fun processArgs(zv:ZebView,vararg args:Any?): JSONArray {
     val array= JSONArray()
     args.forEach {
-        array.put(processArg(it))
+        array.put(processArg(zv,it))
     }
     return array
+}
+
+/**
+ * 随机字符串
+ */
+fun randomString(length:Int):String{
+    val str="ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
+    return (1..length).map { str.random() }.joinToString("")
 }

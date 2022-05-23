@@ -11,7 +11,7 @@ class CallbackObject(
      */
     fun call(funcName:String, vararg args:Any){
         //将参数转换为JSONArray
-        call(funcName,processArgs(*args))
+        call(funcName,processArgs(zv,*args))
     }
 
     /**

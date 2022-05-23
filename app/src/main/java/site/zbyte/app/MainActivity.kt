@@ -10,6 +10,7 @@ import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
 import site.zbyte.zebview.Callback
 import site.zbyte.zebview.CallbackObject
+import site.zbyte.zebview.Promise
 import site.zbyte.zebview.ZebView
 
 private val handler=Handler(Looper.getMainLooper())
@@ -82,5 +83,13 @@ object TestService{
         argObject.call("success",obj)
         argCallback.release()
         argObject.release()
+    }
+
+    @JavascriptInterface
+    fun manyWork(): Promise<String> {
+        return Promise{
+            println("working!!!!!!!!1")
+            it.resolve("I am done")
+        }
     }
 }
