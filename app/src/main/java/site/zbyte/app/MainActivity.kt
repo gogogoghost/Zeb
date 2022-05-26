@@ -89,6 +89,7 @@ object TestService{
     fun manyWork(): Promise<String> {
         return Promise{
             println("working!!!!!!!!1")
+            it.reject("There has some error")
             it.resolve("I am done")
         }
     }

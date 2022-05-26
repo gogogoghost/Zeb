@@ -32,5 +32,7 @@ if(api==null){
 const promise=api.TestService.manyWork()
 console.log(promise)
 promise.then((res)=>{
-    console.log(res)
+    console.log("success promise",res)
+}).catch((err)=>{
+    console.log("error promise",err)
 })
