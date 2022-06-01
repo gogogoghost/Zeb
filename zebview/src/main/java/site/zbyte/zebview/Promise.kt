@@ -38,7 +38,9 @@ class Promise<T>(private val processor:(PromiseCallback<T>)->Unit):PromiseCallba
         else
             State.Rejected
 
+        println(obj)
         val arr= processArgs(zv,obj)
+        println(arr)
         zv.evaluateJavascript("window.finalizePromise(\"$id\",$success,\"${
             arr.toString().replace("\"", "\\\"")
         }\")", null)

@@ -86,11 +86,13 @@ object TestService{
     }
 
     @JavascriptInterface
-    fun manyWork(): Promise<String> {
+    fun manyWork(): Promise<JSONObject> {
         return Promise{
             println("working!!!!!!!!1")
-            it.reject("There has some error")
-            it.resolve("I am done")
+            val obj=JSONObject()
+            obj.put("name","张三")
+            obj.put("age",18)
+            it.resolve(obj)
         }
     }
 }

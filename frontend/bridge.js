@@ -71,7 +71,6 @@ function invokeNative(moduleName,funcName,rawArgs){
  * 处理回调的参数 对象
  */
 function processArg(obj){
-    console.log("=================",obj)
     if(obj&&obj.constructor===String){
         //对象不为null 且为字符串形式
         if(obj.startsWith(BYTEARRAY_PREFIX)){
@@ -128,7 +127,7 @@ window.invokeObjectCallback=function(name,funcName,argsString){
  * native回调js中的promise
  */
 window.finalizePromise=function(id,isSuccess,argsString){
-    console.log("log:invoke promise:"+arguments)
+    console.log("log:invoke promise:"+argsString)
     const obj=promiseMap[id]
     if(obj){
         const args=processArgs(argsString)

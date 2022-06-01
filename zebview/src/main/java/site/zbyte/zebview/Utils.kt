@@ -52,6 +52,9 @@ fun processArg(zv:ZebView,obj:Any?):Any?{
             run.invoke(obj)
             res
         }
+        is JSONObject, is JSONArray ->{
+            obj
+        }
         //其他数据 全部json序列化返回
         else -> {
             obj.toJson()
