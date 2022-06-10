@@ -31,7 +31,7 @@ function randomString(e) {
  * 调用Native指定模块指定代码
  */
 function invokeNative(moduleName,funcName,rawArgs){
-    console.log("log:invoke native:"+arguments)
+    // console.log("log:invoke native:"+arguments)
     //将argument转数组
     const args=[]
     for(let i=0;i<rawArgs.length;i++){
@@ -105,7 +105,7 @@ function processArgs(argsString){
  * native回调js的方法
  */
 window.invokeCallback=function(name,argsString){
-    console.log("log:invoke callback:"+arguments)
+    // console.log("log:invoke callback:"+arguments)
     const func=functionMap[name]
     if(func){
         func(...processArgs(argsString))
@@ -116,7 +116,7 @@ window.invokeCallback=function(name,argsString){
  * native调用js对象中的方法
  */
 window.invokeObjectCallback=function(name,funcName,argsString){
-    console.log("log:invoke object callback:"+arguments)
+    // console.log("log:invoke object callback:"+arguments)
     const func=(objectMap[name]||{})[funcName]
     if(func){
         func(...processArgs(argsString))
@@ -127,7 +127,7 @@ window.invokeObjectCallback=function(name,funcName,argsString){
  * native回调js中的promise
  */
 window.finalizePromise=function(id,isSuccess,argsString){
-    console.log("log:invoke promise:"+argsString)
+    // console.log("log:invoke promise:"+argsString)
     const obj=promiseMap[id]
     if(obj){
         const args=processArgs(argsString)
@@ -144,7 +144,7 @@ window.finalizePromise=function(id,isSuccess,argsString){
  * 释放一个回调
  */
 window.releaseCallback=function(name){
-    console.log("log:release function")
+    // console.log("log:release function")
     delete functionMap[name]
 }
 
@@ -152,7 +152,7 @@ window.releaseCallback=function(name){
  * 释放一个对象
  */
 window.releaseObject=function(name){
-    console.log("log:release object")
+    // console.log("log:release object")
     delete objectMap[name]
 }
 
@@ -160,7 +160,7 @@ window.releaseObject=function(name){
  * 创建一个proxy代理的api
  */
 function createApi(name,funcList=[]){
-    console.log("log:createApi:"+arguments)
+    // console.log("log:createApi:"+arguments)
     return new Proxy({},{
         get(target,key){
             for(const func of funcList){
