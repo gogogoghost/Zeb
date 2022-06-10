@@ -16,6 +16,12 @@ class Promise<T>(private val processor:(PromiseCallback<T>)->Unit):PromiseCallba
     //标记promise状态
     private var state:State=State.Pending
 
+    //then回调
+    private var thenFunction:((T)->Unit)?=null
+
+    //catch回调
+    private var catchFunction:((Any?)->Unit)?=null
+
     //随机生成promise id
     val id= randomString(16)
 
@@ -25,6 +31,14 @@ class Promise<T>(private val processor:(PromiseCallback<T>)->Unit):PromiseCallba
         zv.getPromiseHandler().post{
             processor.invoke(this)
         }
+    }
+
+    fun then(callback:(T)->Unit){
+        thenFunction=callback
+    }
+
+    fun catch(callback:(Any?)->Unit){
+        catchFunction=callback
     }
 
     fun getState():State{
@@ -38,21 +52,24 @@ class Promise<T>(private val processor:(PromiseCallback<T>)->Unit):PromiseCallba
         else
             State.Rejected
 
-        println(obj)
         val arr= processArgs(zv,obj)
-        println(arr)
+        //调用js方法
         zv.evaluateJavascript("window.finalizePromise(\"$id\",$success,\"${
             arr.toString().replace("\"", "\\\"")
         }\")", null)
     }
 
     override fun resolve(obj: T) {
-        if(state==State.Pending)
+        if(state==State.Pending){
             trigger(true,obj)
+            thenFunction?.invoke(obj)
+        }
     }
 
     override fun reject(err: Any?) {
-        if(state==State.Pending)
+        if(state==State.Pending){
             trigger(false,err)
+            catchFunction?.invoke(err)
+        }
     }
 }
