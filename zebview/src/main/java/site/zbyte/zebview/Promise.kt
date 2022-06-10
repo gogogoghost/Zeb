@@ -33,12 +33,14 @@ class Promise<T>(private val processor:(PromiseCallback<T>)->Unit):PromiseCallba
         }
     }
 
-    fun then(callback:(T)->Unit){
+    fun then(callback:(T)->Unit):Promise<T>{
         thenFunction=callback
+        return this
     }
 
-    fun catch(callback:(Any?)->Unit){
+    fun catch(callback:(Any?)->Unit):Promise<T>{
         catchFunction=callback
+        return this
     }
 
     fun getState():State{
