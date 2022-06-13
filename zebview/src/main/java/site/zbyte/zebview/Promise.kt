@@ -50,7 +50,7 @@ class Promise<T>:PromiseCallback<T>{
         return this
     }
 
-    //Native使用的cache
+    //Native使用的catch
     fun catch(callback:(Any?)->Unit):Promise<T>{
         catchFunction=callback
         return this
