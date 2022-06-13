@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity() {
         webViewSettings.allowContentAccess=false
 
 //        zv.loadUrl("https://appassets.androidplatform.net/assets/index.html")
-        zv.loadUrl("http://192.168.0.137:3000")
+        zv.loadUrl("http://192.168.0.140:3000")
     }
 }
 
@@ -85,14 +85,16 @@ object TestService{
         argObject.release()
     }
 
+    private val promise=Promise<JSONObject>{
+        println("working!!!!!!!!1")
+        val obj=JSONObject()
+        obj.put("name","张三")
+        obj.put("age",18)
+        it.resolve(obj)
+    }
+
     @JavascriptInterface
     fun manyWork(): Promise<JSONObject> {
-        return Promise{
-            println("working!!!!!!!!1")
-            val obj=JSONObject()
-            obj.put("name","张三")
-            obj.put("age",18)
-            it.resolve(obj)
-        }
+        return promise
     }
 }

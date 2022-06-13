@@ -34,11 +34,6 @@ class ZebView: WebView {
 
     private var callbackHandler:Handler?=null
 
-    private val handlerThread=HandlerThread("promise").also {
-        it.start()
-    }
-    private val promiseHandler=Handler(handlerThread.looper)
-
     init {
         addJavascriptInterface(this,"zebview")
     }
@@ -57,11 +52,6 @@ class ZebView: WebView {
     //设置回调handler
     fun setCallbackHandler(handler: Handler){
         callbackHandler=handler
-    }
-
-    //获取回调handler
-    fun getPromiseHandler():Handler{
-        return promiseHandler
     }
 
     //添加一个api服务

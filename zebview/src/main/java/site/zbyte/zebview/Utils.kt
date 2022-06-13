@@ -41,16 +41,8 @@ fun processArg(zv:ZebView,obj:Any?):Any?{
         }
         //Promise
         is Promise<*>->{
-            val res="${ZebView.PROMISE_PREFIX}${obj.id}"
-            //将zv对象注入
-            val zvFiled=obj.javaClass.getDeclaredField("zv")
-            zvFiled.isAccessible=true
-            zvFiled.set(obj,zv)
-            //注入完成 启动promise工作
-            val run=obj.javaClass.getDeclaredMethod("run")
-            run.isAccessible=true
-            run.invoke(obj)
-            res
+            obj.setZebView(zv)
+            "${ZebView.PROMISE_PREFIX}${obj.getId()}"
         }
         is JSONObject, is JSONArray ->{
             obj
