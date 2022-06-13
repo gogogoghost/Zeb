@@ -67,6 +67,7 @@ Java -> Javascript(callback)
 - byte[] -> Uint8Array
 - Array<Any> -> Array
 - JSONObject -> Object
+- [Promise](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/Promise.kt)<T> -> Promise<T>
 
 ### Callback
 
