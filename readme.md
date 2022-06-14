@@ -29,6 +29,15 @@ dependencies {
 Create ZebView in layout xml file or by java code(kotlin)
 
 ```kotlin
+//Make a service
+object TestServiceObject{
+    @JavascriptInterface
+    fun test(intVal:Int,strVal:String,boolVal:Boolean){
+        //This function invoke by js and can return something
+        //See [Support Params Type] behind
+    }
+}
+
 //Create ZebView
 val zv=ZebView(context)
 
