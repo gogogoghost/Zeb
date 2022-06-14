@@ -16,6 +16,14 @@ fun Any.toJson():JSONObject{
     return obj
 }
 
+fun finalizePromise(zebView:ZebView,id:String,success:Boolean,result:Any?){
+    val arr= processArgs(zebView,result)
+    //调用js方法
+    zebView.evaluateJavascript("window.finalizePromise(\"$id\",$success,\"${
+        arr.toString().replace("\"", "\\\"")
+    }\")", null)
+}
+
 /**
  * JAVA对象转js对象
  */
@@ -41,8 +49,16 @@ fun processArg(zv:ZebView,obj:Any?):Any?{
         }
         //Promise
         is Promise<*>->{
-            obj.setZebView(zv)
-            "${ZebView.PROMISE_PREFIX}${obj.getId()}"
+            //调用同一个Promise也会有不同的ID
+            val callHash= randomString(8)
+            //完整的promiseID
+            val hash="${obj.getId()}${callHash}"
+            obj.then {
+                finalizePromise(zv,hash,true,it)
+            }.catch {
+                finalizePromise(zv,hash,false,it)
+            }
+            "${ZebView.PROMISE_PREFIX}${hash}"
         }
         is JSONObject, is JSONArray ->{
             obj

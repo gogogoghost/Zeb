@@ -29,12 +29,18 @@ if(api==null){
 //     }
 // )
 
-const promise=api.TestService.manyWork()
-console.log(promise)
-promise.then((res)=>{
+api.TestService.manyWork().then((res)=>{
     console.log("success promise",res)
     console.log(res['name'])
     console.log(res['age'])
 }).catch((err)=>{
+    console.log("error promise",err)
+})
+api.TestService.manyWork().then((res)=>{
+    console.log("success promise",res)
+    console.log(res['name'])
+    console.log(res['age'])
+}).catch((err)=>{
+    
     console.log("error promise",err)
 })

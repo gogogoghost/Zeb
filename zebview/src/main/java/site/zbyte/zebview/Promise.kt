@@ -6,9 +6,12 @@ import androidx.annotation.Keep
 
 class Promise<T>:PromiseCallback<T>{
 
+    private val handler:Handler
+
     constructor(processor:(PromiseCallback<T>)->Unit):this(processor, promiseHandler)
 
     constructor(processor:(PromiseCallback<T>)->Unit,handler:Handler) {
+        this.handler=handler
         handler.post{
             processor.invoke(this)
         }
@@ -31,36 +34,42 @@ class Promise<T>:PromiseCallback<T>{
     private var state:State=State.Pending
 
     //then回调
-    private var thenFunction:((T)->Unit)?=null
+    private var thenFunctionList:ArrayList<((T)->Unit)> = arrayListOf()
+
+    private var thenResult:T?=null
 
     //catch回调
-    private var catchFunction:((Any?)->Unit)?=null
+    private var catchFunctionList:ArrayList<((Any?)->Unit)> = arrayListOf()
+
+    private var catchResult:Any?=null
 
     //随机生成promise id
-    private val id= randomString(16)
-
-    //zebview
-    private var zebView:ZebView?=null
-
-    private var triggerFunc:(()->Unit)?=null
+    private val id=randomString(16)
 
     //Native使用的then
+    @Synchronized
     fun then(callback:(T)->Unit):Promise<T>{
-        thenFunction=callback
+        if(state==State.Pending){
+            thenFunctionList.add(callback)
+        }else if(state==State.Resolved){
+            handler.post{
+                callback.invoke(thenResult!!)
+            }
+        }
         return this
     }
 
     //Native使用的catch
-    fun catch(callback:(Any?)->Unit):Promise<T>{
-        catchFunction=callback
-        return this
-    }
-
-    //设置一个zebview
     @Synchronized
-    fun setZebView(zebView: ZebView){
-        this.zebView=zebView
-        triggerFunc?.invoke()
+    fun catch(callback:(Any?)->Unit):Promise<T>{
+        if(state==State.Pending){
+            catchFunctionList.add(callback)
+        }else if(state==State.Rejected){
+            handler.post{
+                callback.invoke(catchResult!!)
+            }
+        }
+        return this
     }
 
     //获取当前promise状态
@@ -75,31 +84,15 @@ class Promise<T>:PromiseCallback<T>{
     }
 
     @Synchronized
-    private fun trigger(success:Boolean,obj:Any?){
-        val func={
-            zebView!!.let {
-                val arr= processArgs(it,obj)
-                //调用js方法
-                it.evaluateJavascript("window.finalizePromise(\"$id\",$success,\"${
-                    arr.toString().replace("\"", "\\\"")
-                }\")", null)
-            }
-        }
-        if(zebView==null){
-            //等于null 等待trigger
-            triggerFunc=func
-        }else{
-            //zebview有数据，立即trigger
-            func.invoke()
-        }
-    }
-
-    @Synchronized
     override fun resolve(obj: T) {
         if(state==State.Pending){
             state=State.Resolved
-            trigger(true,obj)
-            thenFunction?.invoke(obj)
+            thenResult=obj
+            while(thenFunctionList.size>0){
+                val item=thenFunctionList.first()
+                item.invoke(obj)
+                thenFunctionList.removeAt(0)
+            }
         }
     }
 
@@ -107,8 +100,12 @@ class Promise<T>:PromiseCallback<T>{
     override fun reject(err: Any?) {
         if(state==State.Pending){
             state=State.Rejected
-            trigger(false,err)
-            catchFunction?.invoke(err)
+            catchResult=err
+            while(catchFunctionList.size>0){
+                val item=catchFunctionList.first()
+                item.invoke(err)
+                catchFunctionList.removeAt(0)
+            }
         }
     }
 }
