@@ -2,7 +2,7 @@
 
 [![](https://jitpack.io/v/site.zbyte/zebview.svg)](https://jitpack.io/#site.zbyte/zebview)
 
-Bridge between javascript and java on Android WebView
+Bridge between javascript and java/kotlin on Android WebView
 
 ### Get Start
 
@@ -80,6 +80,8 @@ Java -> Javascript(callback)
 
 ### Callback
 
+When android receive a Callback or CallbackObject from js
+
 ```kotlin
 //Callback
 callback.call(args0,args1,args2)
@@ -96,6 +98,8 @@ callbackObject.release()
 ```
 
 ### Version Compatible
+
+Versions of [ZebView](https://jitpack.io/#site.zbyte/zebview) for Android and [zebview-bridge](https://www.npmjs.com/package/zebview-bridge) for web
 
 The following tow versions are compatible
 
