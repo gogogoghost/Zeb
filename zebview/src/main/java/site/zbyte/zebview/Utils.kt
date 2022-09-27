@@ -88,3 +88,19 @@ fun randomString(length:Int):String{
     val str="ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
     return (1..length).map { str.random() }.joinToString("")
 }
+
+fun ByteArray.toInt():Int{
+    var result = 0
+    for (i in indices) {
+        result = result or (this[i].toInt() shl 8 * i)
+    }
+    return result
+}
+
+fun ByteArray.toLong():Long{
+    var result = 0L
+    for (i in indices) {
+        result = result or (this[i].toLong() shl 8 * i)
+    }
+    return result
+}

@@ -8,8 +8,8 @@ import android.webkit.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
-import site.zbyte.zebview.Callback
-import site.zbyte.zebview.CallbackObject
+import site.zbyte.zebview.callback.Callback
+import site.zbyte.zebview.callback.CallbackObject
 import site.zbyte.zebview.Promise
 import site.zbyte.zebview.ZebView
 
@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
 
         val zv=findViewById<ZebView>(R.id.zv)
 
-        zv.addService("TestService", TestService)
+        zv.addBaseObject("TestService", TestService)
 
         zv.clearCache(true)
 
@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity() {
         webViewSettings.allowContentAccess=false
 
 //        zv.loadUrl("https://appassets.androidplatform.net/assets/index.html")
-        zv.loadUrl("http://192.168.0.140:3000")
+        zv.loadUrl("http://192.168.0.127:3000")
     }
 }
 

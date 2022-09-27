@@ -178,21 +178,37 @@ function createApi(name,funcList=[]){
 
 //服务存储
 let api={}
-let hasInit=false
 
-/**
- * 返回一个方法 当bridge初始化完成后接收回调
- */
-export default function (){
-    if(!hasInit){
-        if(!window.zebview){
-            return null
-        }
-        const apiMap=JSON.parse(window.zebview.getServices())
-        for(const key in apiMap){
-            api[key]=createApi(key,apiMap[key])
-        }
-        hasInit=true
-    }
-    return api
+function addApi(name,funcList){
+    api[name]=createApi(name,funcList)
 }
+
+let exportObject=null
+
+function stringToUint8Array(str){
+    var arr = [];
+    for (var i = 0, j = str.length; i < j; ++i) {
+      arr.push(str.charCodeAt(i));
+    }
+   
+    var tmpUint8Array = new Uint8Array(arr);
+    return tmpUint8Array
+  }
+
+if(window.zebview){
+    const baseApi=createApi("_base",["registerServiceWatcher"])
+    const objList=baseApi.registerServiceWatcher((info)=>{
+        addApi(info['name'],info['funcList'])
+    })
+    for(const item of objList){
+        addApi(item['name'],item['funcList'])
+    }
+    exportObject={
+        api:api
+    }
+    const res=window.zebview.testCall()
+    console.log(res)
+    console.log(stringToUint8Array(res))
+}
+
+export default exportObject

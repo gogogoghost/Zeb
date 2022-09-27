@@ -1,6 +1,8 @@
-package site.zbyte.zebview
+package site.zbyte.zebview.callback
 
 import org.json.JSONArray
+import site.zbyte.zebview.ZebView
+import site.zbyte.zebview.processArgs
 
 /**
  * 描述一个js的回调方法

@@ -1,6 +1,8 @@
-package site.zbyte.zebview
+package site.zbyte.zebview.callback
 
 import org.json.JSONArray
+import site.zbyte.zebview.ZebView
+import site.zbyte.zebview.processArgs
 
 class CallbackObject(
     private val zv: ZebView,
@@ -11,7 +13,7 @@ class CallbackObject(
      */
     fun call(funcName:String, vararg args:Any){
         //将参数转换为JSONArray
-        call(funcName,processArgs(zv,*args))
+        call(funcName, processArgs(zv,*args))
     }
 
     /**

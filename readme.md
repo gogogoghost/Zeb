@@ -96,12 +96,3 @@ You need to release a callback if you don't need it any more.
 callback.release()
 callbackObject.release()
 ```
-
-### Version Compatible
-
-Versions of [ZebView](https://jitpack.io/#site.zbyte/zebview) for Android and [zebview-bridge](https://www.npmjs.com/package/zebview-bridge) for web
-
-The following tow versions are compatible
-
-- A.B.x
-- A.B.y

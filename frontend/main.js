@@ -1,8 +1,7 @@
-import getService from './bridge'
+import zv from './bridge'
 
-const api=getService()
-// console.log(api)
-if(api==null){
+
+if(zv==null){
     throw "Get service error"
 }
 // api.TestService.test(
@@ -29,18 +28,19 @@ if(api==null){
 //     }
 // )
 
-api.TestService.manyWork().then((res)=>{
-    console.log("success promise",res)
-    console.log(res['name'])
-    console.log(res['age'])
-}).catch((err)=>{
-    console.log("error promise",err)
-})
-api.TestService.manyWork().then((res)=>{
-    console.log("success promise",res)
-    console.log(res['name'])
-    console.log(res['age'])
-}).catch((err)=>{
+console.log(zv)
+// api.TestService.manyWork().then((res)=>{
+//     console.log("success promise",res)
+//     console.log(res['name'])
+//     console.log(res['age'])
+// }).catch((err)=>{
+//     console.log("error promise",err)
+// })
+// api.TestService.manyWork().then((res)=>{
+//     console.log("success promise",res)
+//     console.log(res['name'])
+//     console.log(res['age'])
+// }).catch((err)=>{
     
-    console.log("error promise",err)
-})
+//     console.log("error promise",err)
+// })
