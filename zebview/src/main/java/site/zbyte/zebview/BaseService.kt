@@ -5,36 +5,31 @@ import org.json.JSONArray
 import org.json.JSONObject
 import site.zbyte.zebview.callback.Callback
 
+@JavascriptClass
 class BaseService {
 
-    private var waitForCallback = JSONArray()
+    private var waitForCallback = ArrayList<Any>()
     private var callbackObj : Callback?=null
 
 //    注册事件顺便返回所有服务
     @JavascriptInterface
-    fun registerServiceWatcher(obj: Callback):JSONArray{
+    fun registerServiceWatcher(obj: Callback):Array<Any>{
         synchronized(this) {
             callbackObj = obj
-            val tmpArr=waitForCallback
-//            设置为新对象 释放内存
-            waitForCallback=JSONArray()
-            return tmpArr
+            val res=waitForCallback.toArray()
+            waitForCallback.clear()
+            return res
         }
     }
 
-    fun onAdd(name:String,funcList:Set<String>){
-        val data=JSONObject()
-        data.put("name",name)
-        val funcArray=JSONArray()
-        funcList.forEach {
-            funcArray.put(it)
-        }
-        data.put("funcList",funcArray)
+    fun onAdd(obj:Any){
+        if(!obj::class.java.isAnnotationPresent(JavascriptClass::class.java))
+            return
         synchronized(this){
             if(callbackObj==null){
-                waitForCallback.put(data)
+                waitForCallback.add(obj)
             }else{
-                callbackObj!!.call(data)
+                callbackObj!!.call(obj)
             }
         }
     }

@@ -1,8 +1,7 @@
 package site.zbyte.zebview.callback
 
-import org.json.JSONArray
 import site.zbyte.zebview.ZebView
-import site.zbyte.zebview.processArgs
+import site.zbyte.zebview.toByteArray
 
 /**
  * 描述一个js的回调方法
@@ -15,24 +14,33 @@ class Callback(
     /**
      * 调用该回调方法
      */
-    fun call(vararg args:Any){
-        call(processArgs(zv,*args))
+    fun call(vararg args:Any?){
+        zv.appendResponse(object :Response{
+            override fun stringify(): String {
+                return String(
+                    //回调为方法
+                    Response.REST.CALLBACK.v.toByteArray()+
+                            //方法标记名称
+                            functionToken.toByteArray()+
+                            //0分割内容
+                            0+
+                            //回调内容
+                            zv.encodeArray(args)
+                )
+            }
+        })
     }
 
-    /**
-     * 内部调用web view触发回调
-     */
-    private fun call(array:JSONArray){
-        zv.evaluateJavascript(
-            "window.invokeCallback(\"$functionToken\",\"${array.toString().replace("\"","\\\"")}\")",
-            null
-        )
-    }
-
-    /**
-     * 无需使用后 调用release使js回收内存
-     */
-    fun release(){
-        zv.evaluateJavascript("window.releaseCallback(\"$functionToken\")", null)
+    protected fun finalize(){
+        zv.appendResponse(object :Response{
+            override fun stringify(): String {
+                return String(
+                    //释放回调
+                    Response.REST.RELEASE_CALLBACK.v.toByteArray()+
+                            //方法名称
+                            functionToken.toByteArray()
+                )
+            }
+        })
     }
 }

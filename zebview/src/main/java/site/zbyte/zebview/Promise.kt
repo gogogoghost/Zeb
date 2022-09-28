@@ -2,27 +2,29 @@ package site.zbyte.zebview
 
 import android.os.Handler
 import android.os.HandlerThread
-import androidx.annotation.Keep
 
 class Promise<T>:PromiseCallback<T>{
+
+    companion object{
+        //默认handler
+        private val handlerThread= HandlerThread("promise").also {
+            it.start()
+        }
+        private val promiseHandler= Handler(handlerThread.looper)
+    }
 
     private val handler:Handler
 
     constructor(processor:(PromiseCallback<T>)->Unit):this(processor, promiseHandler)
 
     constructor(processor:(PromiseCallback<T>)->Unit,handler:Handler) {
+        //初始化handler 并且执行promise
         this.handler=handler
         handler.post{
             processor.invoke(this)
         }
     }
 
-    companion object{
-        private val handlerThread= HandlerThread("promise").also {
-            it.start()
-        }
-        private val promiseHandler= Handler(handlerThread.looper)
-    }
 
     enum class State{
         Pending,

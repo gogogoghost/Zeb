@@ -1,8 +1,7 @@
 package site.zbyte.zebview.callback
 
-import org.json.JSONArray
 import site.zbyte.zebview.ZebView
-import site.zbyte.zebview.processArgs
+import site.zbyte.zebview.toByteArray
 
 class CallbackObject(
     private val zv: ZebView,
@@ -11,25 +10,38 @@ class CallbackObject(
     /**
      * 调用该对象内的方法
      */
-    fun call(funcName:String, vararg args:Any){
-        //将参数转换为JSONArray
-        call(funcName, processArgs(zv,*args))
+    fun call(funcName:String, vararg args:Any?){
+        zv.appendResponse(object :Response{
+            override fun stringify(): String {
+                return String(
+                    //回调为方法
+                    Response.REST.OBJECT_CALLBACK.v.toByteArray()+
+                            //对象token
+                            objectToken.toByteArray()+
+                            //0分割
+                            0+
+                            //方法标记名称
+                            funcName.toByteArray()+
+                            //0分割
+                            0+
+                            //回调内容
+                            zv.encodeArray(args)
+                )
+            }
+        })
     }
 
-    /**
-     * 真正调用js的call
-     */
-    private fun call(funcName: String, args:JSONArray){
-        zv.evaluateJavascript(
-            "window.invokeObjectCallback(\"$objectToken\",\"${funcName}\",\"${args.toString().replace("\"","\\\"")}\")",
-            null
-        )
-    }
 
-    /**
-     * 无需使用的回调需要使用release以便释放js内存
-     */
-    fun release(){
-        zv.evaluateJavascript("window.releaseObject(\"$objectToken\")", null)
+    protected fun finalize(){
+        zv.appendResponse(object :Response{
+            override fun stringify(): String {
+                return String(
+                    //释放回调
+                    Response.REST.RELEASE_OBJECT.v.toByteArray()+
+                            //方法名称
+                            objectToken.toByteArray()
+                )
+            }
+        })
     }
 }

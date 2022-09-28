@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
 
         val zv=findViewById<ZebView>(R.id.zv)
 
-        zv.addBaseObject("TestService", TestService)
+        zv.addNamedJsObject("TestService", TestService)
 
         zv.clearCache(true)
 
@@ -81,8 +81,6 @@ object TestService{
         val obj=JSONObject()
         obj.put("name","Jack")
         argObject.call("success",obj)
-        argCallback.release()
-        argObject.release()
     }
 
     private val promise=Promise<JSONObject>{
