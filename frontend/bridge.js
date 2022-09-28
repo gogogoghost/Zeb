@@ -193,7 +193,9 @@ function decodeArray(bytes){
     let index=0
     while(index<bytes.length){
         //size
-        const size=new Uint32Array(buffer,index)[0]
+        console.log(buffer,index)
+        const size=new Uint32Array(buffer,index,4)[0]
+        console.log(size)
         index+=4
         //body
         const data=new Uint8Array(buffer,index,size)

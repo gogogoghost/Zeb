@@ -8,6 +8,7 @@ import android.webkit.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
+import site.zbyte.zebview.JavascriptClass
 import site.zbyte.zebview.callback.Callback
 import site.zbyte.zebview.callback.CallbackObject
 import site.zbyte.zebview.Promise
@@ -60,6 +61,7 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
+@JavascriptClass
 object TestService{
     @JavascriptInterface
     fun test(

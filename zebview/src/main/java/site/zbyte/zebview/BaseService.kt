@@ -17,14 +17,17 @@ class BaseService {
         synchronized(this) {
             callbackObj = obj
             val res=waitForCallback.toArray()
-            waitForCallback.clear()
+            println("register:${res.size}")
+//            waitForCallback.clear()
             return res
         }
     }
 
     fun onAdd(obj:Any){
+        println("onAdd")
         if(!obj::class.java.isAnnotationPresent(JavascriptClass::class.java))
             return
+        println("add success")
         synchronized(this){
             if(callbackObj==null){
                 waitForCallback.add(obj)

@@ -320,7 +320,6 @@ class ZebView: WebView {
             while(buffer.remaining()>0){
                 //获取长度
                 val size=buffer.int
-                println("size:$size")
                 //获取数据
                 val data=ByteArray(size)
                 buffer.get(data)
