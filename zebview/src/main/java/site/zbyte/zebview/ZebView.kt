@@ -1,10 +1,7 @@
 package site.zbyte.zebview
 
-import android.content.Context
-import android.os.Handler
-import android.os.Looper
-import android.util.AttributeSet
-import android.util.Log
+import android.annotation.SuppressLint
+import android.view.View
 import android.webkit.*
 import site.zbyte.zebview.callback.Callback
 import site.zbyte.zebview.callback.CallbackObject
@@ -16,11 +13,8 @@ import java.lang.reflect.Method
 import java.nio.ByteBuffer
 import java.util.concurrent.LinkedBlockingQueue
 
-class ZebView: WebView {
-
-    companion object{
-        private const val TAG="Zebview"
-    }
+@SuppressLint("SetJavaScriptEnabled")
+class ZebView(private val src:WebView) {
 
     /**
      * JS->Native 标志
@@ -56,58 +50,36 @@ class ZebView: WebView {
         ERROR(15),
     }
 
-    constructor(context: Context):super(context)
-
-    constructor(context: Context,attrs: AttributeSet):super(context,attrs)
-
-    constructor(context: Context,attrs: AttributeSet,defStyle:Int):super(context, attrs, defStyle)
-
-//    有名字的js可调用对象
-//    private val namedJsCallableObjectMap=HashMap<String, JsCallableObject>()
 //    普通的js可调用对象
     private val jsCallableObjectMap=HashMap<String,JsCallableObject>()
 //    回调队列
     private val callbackQueue=LinkedBlockingQueue<Response>()
 
-    private val mainHandler=Handler(Looper.getMainLooper())
-    private var callbackHandler:Handler=mainHandler
-
+    //_base对象
     private val baseService=BaseService(this)
     private val baseJsObject=JsCallableObject(baseService)
 
     init {
-        addJavascriptInterface(this,"zebview")
-        webViewClient= object :WebViewClient(){
-            override fun shouldInterceptRequest(
-                view: WebView,
-                request: WebResourceRequest
-            ): WebResourceResponse? {
-                if(request.method=="GET" &&
-                    request.url.scheme=="http"&&
-                    request.url.host=="zv"){
-                    if(request.url.path=="/receive"){
-                        val data=callbackQueue.take().toByteArray()
-                        val input=ByteArrayInputStream(data)
-                        return WebResourceResponse(null,null,200,"OK", hashMapOf(
-                            "Access-Control-Allow-Origin" to "*"
-                        ),input)
-                    }
-                }
-                return super.shouldInterceptRequest(view, request)
+        src.settings.javaScriptEnabled=true
+        src.addJavascriptInterface(this,"zebview")
+    }
+
+    fun shouldInterceptRequest(
+        view: View,
+        request: WebResourceRequest
+    ): WebResourceResponse?{
+        if(request.method=="GET" &&
+            request.url.scheme=="http"&&
+            request.url.host=="zv"){
+            if(request.url.path=="/receive"){
+                val data=callbackQueue.take().toByteArray()
+                val input=ByteArrayInputStream(data)
+                return WebResourceResponse(null,null,200,"OK", hashMapOf(
+                    "Access-Control-Allow-Origin" to "*"
+                ),input)
             }
         }
-    }
-
-    //覆写执行js 使js执行在主线程
-    override fun evaluateJavascript(script: String, resultCallback: ValueCallback<String>?) {
-        callbackHandler.post{
-            super.evaluateJavascript(script, resultCallback)
-        }
-    }
-
-    //设置回调handler
-    fun setCallbackHandler(handler: Handler){
-        callbackHandler=handler
+        return null
     }
 
     //添加一个 命名对象供js调用
@@ -176,10 +148,14 @@ class ZebView: WebView {
     /**
      * 释放匿名对象
      */
+    @JavascriptInterface
     fun releaseObject(id:String){
         jsCallableObjectMap.remove(id)
     }
 
+    /**
+     * 给回调队列里增加一个响应
+     */
     fun appendResponse(res:Response){
         callbackQueue.put(res)
     }
@@ -386,8 +362,7 @@ class ZebView: WebView {
             //执行函数
             val res=method.invoke(obj, *argsArray)
             //返回参数
-            val r=encodeArg(res)
-            return r
+            return encodeArg(res)
         }
     }
 }

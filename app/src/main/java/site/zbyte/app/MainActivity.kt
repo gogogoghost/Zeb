@@ -2,10 +2,9 @@ package site.zbyte.app
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.webkit.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
 import site.zbyte.zebview.JavascriptClass
 import site.zbyte.zebview.callback.Callback
@@ -23,39 +22,37 @@ class MainActivity : AppCompatActivity() {
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
 
-        val zv=findViewById<ZebView>(R.id.zv)
+        val src=findViewById<WebView>(R.id.zv)
+        val zv=ZebView(src)
 
         zv.addJsObject("TestService", TestService)
 
-        zv.clearCache(true)
+        val assetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
 
+        src.webViewClient= object :WebViewClient(){
+            override fun shouldInterceptRequest(
+                view: WebView,
+                request: WebResourceRequest
+            ): WebResourceResponse? {
+                val zvRes=zv.shouldInterceptRequest(view,request)
+                if(zvRes!=null)
+                    return zvRes
+                val res=assetLoader.shouldInterceptRequest(request.url)
+                if(request.url.toString().endsWith(".js")){
+                    res?.mimeType="text/javascript"
+                }
+                return res
+            }
+        }
 
-//        val assetLoader = WebViewAssetLoader.Builder()
-//            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
-//            .build()
-
-//        zv.webViewClient= object :WebViewClient(){
-//            override fun shouldInterceptRequest(
-//                view: WebView,
-//                request: WebResourceRequest
-//            ): WebResourceResponse? {
-//                val res=assetLoader.shouldInterceptRequest(request.url)
-//                if(request.url.toString().endsWith(".js")){
-//                    res?.mimeType="text/javascript"
-//                }
-//                return res
-//            }
-//        }
-        //设置回调线程
-        zv.setCallbackHandler(Handler(Looper.getMainLooper()))
-
-        val webViewSettings: WebSettings = zv.settings
+        val webViewSettings: WebSettings = src.settings
         webViewSettings.javaScriptEnabled=true
         webViewSettings.allowFileAccess=false
         webViewSettings.allowContentAccess=false
 
-//        zv.loadUrl("https://appassets.androidplatform.net/assets/index.html")
-        zv.loadUrl("http://192.168.0.127:3000")
+        src.loadUrl("http://192.168.0.127:3000")
     }
 }
 

@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context="site.zbyte.app.MainActivity">
-    <site.zbyte.zebview.ZebView
+    <WebView
         android:id="@+id/zv"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
