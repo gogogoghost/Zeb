@@ -11,7 +11,6 @@ import site.zbyte.zebview.callback.Callback
 import site.zbyte.zebview.callback.CallbackObject
 import site.zbyte.zebview.callback.Promise
 import site.zbyte.zebview.ZebView
-import site.zbyte.zebview.value.JsNumber
 
 class MainActivity : AppCompatActivity() {
 
@@ -75,14 +74,16 @@ object TestService{
 
     @JavascriptInterface
     fun test(
-        argInt:JsNumber,
+        argInt:Long,
+        argFloat:Double,
         argStr:String,
         argBool:Boolean,
         argArr:Array<Any>,
         argCallback: Callback,
         argObject: CallbackObject
-    ){
+    ):Double{
         println(Thread.currentThread())
+        println(argFloat)
         println("$argInt $argStr $argBool")
         argArr.forEach {
             println(it)
@@ -90,6 +91,7 @@ object TestService{
         argCallback.call(123456,"test string",true, arrayOf(456798,"string in array",false))
 
         argObject.call("success","return")
+        return 10.24
     }
 
     private val promise= Promise<String>{

@@ -1,7 +1,6 @@
 
 //number转成bytes
 export function num2arr(num,size){
-    if (!num) return new Uint8Array(0)
     const res=new Uint8Array(size)
     let i=size-1
     res[i]=num & 255
@@ -26,10 +25,10 @@ export function arr2num(bytes){
 export function arr2float(bytes){
     if(bytes.length==4){
         //float
-        return new Float32Array(bytes.buffer,bytes.byteOffset,bytes.length)[0]
+        return new DataView(bytes.buffer,bytes.byteOffset,bytes.length).getFloat32()
     }else if(bytes.length==8){
         //double
-        return new Float64Array(bytes.buffer,bytes.byteOffset,bytes.length)[0]
+        return new DataView(bytes.buffer,bytes.byteOffset,bytes.length).getFloat64()
     }else{
         throw new Error("Not valid float byte length:"+bytes.length)
     }

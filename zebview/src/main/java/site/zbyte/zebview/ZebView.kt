@@ -7,10 +7,10 @@ import site.zbyte.zebview.callback.Callback
 import site.zbyte.zebview.callback.CallbackObject
 import site.zbyte.zebview.callback.Promise
 import site.zbyte.zebview.callback.Response
-import site.zbyte.zebview.value.JsNumber
 import java.io.ByteArrayInputStream
 import java.lang.reflect.Method
 import java.nio.ByteBuffer
+import java.nio.charset.Charset
 import java.util.concurrent.LinkedBlockingQueue
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -23,7 +23,8 @@ class ZebView(private val src:WebView) {
         NULL(1),
         //基本类型
         STRING(2),
-        NUMBER(3),
+        INT(4),
+        FLOAT(5),
         BOOLEAN(6),
         //特殊类型
         FUNCTION(10),
@@ -114,6 +115,7 @@ class ZebView(private val src:WebView) {
             try{
                 String(baseJsObject.call(func,args))
             }catch (e:Exception){
+                e.printStackTrace()
                 String(encodeError(e.toString()))
             }
         }else{
@@ -131,8 +133,14 @@ class ZebView(private val src:WebView) {
             val api=jsCallableObjectMap[id]!!
             if(api.hasFunc(func)){
                 try{
-                    String(api.call(func,args))
+                    val tmp=api.call(func,args)
+                    println(tmp.toStr())
+                    println("字节长度：${tmp.size}")
+                    val res=String(tmp)
+                    println("字符串长度：${res.length}")
+                    res
                 }catch (e:Exception){
+                    e.printStackTrace()
                     String(encodeError(e.toString()))
                 }
             }else{
@@ -316,8 +324,11 @@ class ZebView(private val src:WebView) {
                     //数组
                     return decodeArray(body)
                 }
-                REQT.NUMBER.v->{
-                    return JsNumber(body)
+                REQT.INT.v->{
+                    return ByteBuffer.wrap(body).long
+                }
+                REQT.FLOAT.v->{
+                    return ByteBuffer.wrap(body).double
                 }
                 REQT.STRING.v->{
                     return String(body)
@@ -340,11 +351,14 @@ class ZebView(private val src:WebView) {
          * 数组为：[(长度)+(body)]
          */
         private fun decodeArray(byteArray: ByteArray):Array<Any?>{
+            println(byteArray.toStr())
+            println(byteArray.size)
             val buffer=ByteBuffer.wrap(byteArray)
             val out=ArrayList<Any?>()
             while(buffer.remaining()>0){
                 //获取长度
                 val size=buffer.int
+                println(size)
                 //获取数据
                 val data=ByteArray(size)
                 buffer.get(data)
@@ -358,7 +372,8 @@ class ZebView(private val src:WebView) {
             //js调用java方法，将js对象转为java对象
             val method = funcMap[name]!!
             //转换参数 js调用native函数，参数一定是array
-            val argsArray=decodeArray(argsString.toByteArray())
+            println(argsString.length)
+            val argsArray=decodeArray(argsString.toByteArray(Charset.forName("ASCII")))
             //执行函数
             val res=method.invoke(obj, *argsArray)
             //返回参数

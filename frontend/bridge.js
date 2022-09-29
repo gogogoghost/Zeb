@@ -1,11 +1,13 @@
 import { num2arr, concatArr, arr2num, arr2float } from "./utils";
+import {encode,decode} from 'js-base64'
 
 // js请求native的数据类型
 const REQT = {
     NULL: 1,
     //基本类型
     STRING: 2,
-    NUMBER: 3,
+    INT: 4,
+    FLOAT: 5,
     BOOLEAN: 6,
     //特殊类型
     FUNCTION: 10,
@@ -47,8 +49,19 @@ const objectMap = {}
 //存储待pending的promise
 const promiseMap = {}
 
-//TextEncoder
-const textEncoder = new TextEncoder()
+//str => bytes
+const textEncoder = {
+    encode:(str)=>{
+        console.log(str)
+        const bytes=new Uint8Array(str.length)
+        for(let i=0;i<str.length;i++){
+            bytes[i]=str.charCodeAt(i)
+        }
+        console.log(bytes)
+        return bytes
+    }
+}
+//bytes => str
 const textDecoder = new TextDecoder()
 
 //服务存储
@@ -79,27 +92,17 @@ function encodeArg(arg) {
         return num2arr(REQT.NULL, 1)
     } else if (c == Number) {
         if (arg % 1 == 0) {
-            //int or long
-            if (arg > 0xffffffff) {
-                //long
-                return concatArr(
-                    num2arr(REQT.NUMBER, 1),
-                    num2arr(arg, 8)
-                )
-            } else {
-                //int
-                return concatArr(
-                    num2arr(REQT.NUMBER, 1),
-                    num2arr(arg, 4)
-                )
-            }
-        } else {
-            //float or double
-            //not support float only
-            let buf = new Float32Array([arg])
+            //use 8 bytes
             return concatArr(
-                num2arr(REQT.NUMBER, 1),
-                new Int8Array(buf.buffer)
+                num2arr(REQT.INT, 1),
+                num2arr(arg, 8)
+            )
+        } else {
+            //use 8 bytes
+            let buf = new Float64Array([arg])
+            return concatArr(
+                num2arr(REQT.FLOAT, 1),
+                new Uint8Array(buf.buffer),
             )
         }
     } else if (c == String) {
@@ -239,8 +242,11 @@ function createObject(name, funcList = []) {
                             func,
                             args
                         )
+                        console.log("字符串长度：",res.length)
+                        const bytes2=textEncoder.encode(res)
+                        console.log("字节长度："+bytes2.length)
                         return decodeArg(
-                            textEncoder.encode(res)
+                            bytes2
                         )
                     }
                 }
