@@ -57,6 +57,11 @@ let api = {}
 // 没有获取到zebview 默认导出null
 let exportObject = null
 
+// 内存释放注册器
+const register=new FinalizationRegistry((token)=>{
+    window.zebview.releaseObject(token)
+})
+
 //生成随机字符串
 function randomString(e) {
     e = e || 32;
@@ -150,13 +155,6 @@ function encodeArray(args) {
     return res
 }
 
-//监听对象回收，并且调用native释放
-function registerObjectRelease(token,obj){
-    // new FinalizationRegistry((token)=>{
-    //     window.zebview.releaseObject(token)
-    // }).register(obj,token)
-}
-
 //解码参数
 function decodeArg(bytes) {
     //先读取一个标志位
@@ -184,7 +182,7 @@ function decodeArg(bytes) {
             const funcList = funcListStr.split(',')
             const obj = createObject(token, funcList)
             //当对象不使用的时候 通知native回收内存
-            registerObjectRelease(token,obj)
+            register.register(obj,token)
             return obj
         case REST.BYTEARRAY:
             return body

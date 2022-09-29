@@ -15,8 +15,27 @@ console.log(zv.api)
 //         }
 //     }
 // )
-const worker=zv.api.TestService.getWorker()
-console.log(worker.work())
+function main(){
+    for(let i=0;i<20;i++){
+        let worker=zv.api.TestService.getWorker()
+        console.log(worker.work())
+        worker=null
+    }
+}
+// main()
+
+// const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+// (async()=>{
+//     while(true){
+//         for(let i=0;i<100;i++){
+//             const x=new Array(100)
+//         }
+//         await sleep(10)
+//     }
+// })()
+
+
+
 // zv.api.TestService.manyWork().then((res)=>{
 //     console.log("resolve",res)
 // }).catch((err)=>{

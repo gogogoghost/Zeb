@@ -60,7 +60,7 @@ class MainActivity : AppCompatActivity() {
 object WorkObject{
     @JavascriptInterface
     fun work():String{
-        throw Error("I am a error from native")
+//        throw Error("I am a error from native")
         return "workObject work done"
     }
 }
