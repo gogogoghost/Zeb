@@ -1,9 +1,10 @@
-package site.zbyte.zebview
+package site.zbyte.zebview.callback
 
 import android.os.Handler
 import android.os.HandlerThread
+import site.zbyte.zebview.randomString
 
-class Promise<T>:PromiseCallback<T>{
+class Promise<T>: PromiseCallback<T> {
 
     companion object{
         //默认handler
@@ -17,7 +18,7 @@ class Promise<T>:PromiseCallback<T>{
 
     constructor(processor:(PromiseCallback<T>)->Unit):this(processor, promiseHandler)
 
-    constructor(processor:(PromiseCallback<T>)->Unit,handler:Handler) {
+    constructor(processor:(PromiseCallback<T>)->Unit, handler:Handler) {
         //初始化handler 并且执行promise
         this.handler=handler
         handler.post{
@@ -33,7 +34,7 @@ class Promise<T>:PromiseCallback<T>{
     }
 
     //标记promise状态
-    private var state:State=State.Pending
+    private var state: State = State.Pending
 
     //then回调
     private var thenFunctionList:ArrayList<((T)->Unit)> = arrayListOf()
@@ -46,14 +47,14 @@ class Promise<T>:PromiseCallback<T>{
     private var catchResult:Any?=null
 
     //随机生成promise id
-    private val id=randomString(16)
+    private val id= randomString(16)
 
     //Native使用的then
     @Synchronized
-    fun then(callback:(T)->Unit):Promise<T>{
-        if(state==State.Pending){
+    fun then(callback:(T)->Unit): Promise<T> {
+        if(state== State.Pending){
             thenFunctionList.add(callback)
-        }else if(state==State.Resolved){
+        }else if(state== State.Resolved){
             handler.post{
                 callback.invoke(thenResult!!)
             }
@@ -63,10 +64,10 @@ class Promise<T>:PromiseCallback<T>{
 
     //Native使用的catch
     @Synchronized
-    fun catch(callback:(Any?)->Unit):Promise<T>{
-        if(state==State.Pending){
+    fun catch(callback:(Any?)->Unit): Promise<T> {
+        if(state== State.Pending){
             catchFunctionList.add(callback)
-        }else if(state==State.Rejected){
+        }else if(state== State.Rejected){
             handler.post{
                 callback.invoke(catchResult!!)
             }
@@ -76,7 +77,7 @@ class Promise<T>:PromiseCallback<T>{
 
     //获取当前promise状态
     @Synchronized
-    fun getState():State{
+    fun getState(): State {
         return state
     }
 
@@ -87,8 +88,8 @@ class Promise<T>:PromiseCallback<T>{
 
     @Synchronized
     override fun resolve(obj: T) {
-        if(state==State.Pending){
-            state=State.Resolved
+        if(state== State.Pending){
+            state= State.Resolved
             thenResult=obj
             while(thenFunctionList.size>0){
                 val item=thenFunctionList.first()
@@ -100,8 +101,8 @@ class Promise<T>:PromiseCallback<T>{
 
     @Synchronized
     override fun reject(err: Any?) {
-        if(state==State.Pending){
-            state=State.Rejected
+        if(state== State.Pending){
+            state= State.Rejected
             catchResult=err
             while(catchFunctionList.size>0){
                 val item=catchFunctionList.first()

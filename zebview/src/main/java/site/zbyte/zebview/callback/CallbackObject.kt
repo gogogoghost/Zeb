@@ -12,21 +12,18 @@ class CallbackObject(
      */
     fun call(funcName:String, vararg args:Any?){
         zv.appendResponse(object :Response{
-            override fun stringify(): String {
-                return String(
-                    //回调为方法
-                    Response.REST.OBJECT_CALLBACK.v.toByteArray()+
-                            //对象token
-                            objectToken.toByteArray()+
-                            //0分割
-                            0+
-                            //方法标记名称
-                            funcName.toByteArray()+
-                            //0分割
-                            0+
-                            //回调内容
-                            zv.encodeArray(args)
-                )
+            override fun toByteArray(): ByteArray {
+                return Response.REST.OBJECT_CALLBACK.v.toByteArray()+
+                        //对象token
+                        objectToken.toByteArray()+
+                        //0分割
+                        0+
+                        //方法标记名称
+                        funcName.toByteArray()+
+                        //0分割
+                        0+
+                        //回调内容
+                        zv.encodeArray(args)
             }
         })
     }
@@ -34,13 +31,10 @@ class CallbackObject(
 
     protected fun finalize(){
         zv.appendResponse(object :Response{
-            override fun stringify(): String {
-                return String(
-                    //释放回调
-                    Response.REST.RELEASE_OBJECT.v.toByteArray()+
-                            //方法名称
-                            objectToken.toByteArray()
-                )
+            override fun toByteArray(): ByteArray {
+                return Response.REST.RELEASE_OBJECT.v.toByteArray()+
+                        //方法名称
+                        objectToken.toByteArray()
             }
         })
     }

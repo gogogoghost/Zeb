@@ -5,14 +5,13 @@ import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
 import android.util.Log
-import android.webkit.JavascriptInterface
-import android.webkit.ValueCallback
-import android.webkit.WebView
-import org.json.JSONArray
+import android.webkit.*
 import site.zbyte.zebview.callback.Callback
 import site.zbyte.zebview.callback.CallbackObject
+import site.zbyte.zebview.callback.Promise
 import site.zbyte.zebview.callback.Response
 import site.zbyte.zebview.value.JsNumber
+import java.io.ByteArrayInputStream
 import java.lang.reflect.Method
 import java.nio.ByteBuffer
 import java.util.concurrent.LinkedBlockingQueue
@@ -31,6 +30,7 @@ class ZebView: WebView {
         //基本类型
         STRING(2),
         NUMBER(3),
+        BOOLEAN(6),
         //特殊类型
         FUNCTION(10),
         OBJECT(11),
@@ -46,6 +46,7 @@ class ZebView: WebView {
         STRING(2),
         INT(4),
         FLOAT(5),
+        BOOLEAN(6),
         //特殊类型
         OBJECT(11),
         BYTEARRAY(12),
@@ -60,7 +61,7 @@ class ZebView: WebView {
     constructor(context: Context,attrs: AttributeSet,defStyle:Int):super(context, attrs, defStyle)
 
 //    有名字的js可调用对象
-    private val namedJsCallableObjectMap=HashMap<String, JsCallableObject>()
+//    private val namedJsCallableObjectMap=HashMap<String, JsCallableObject>()
 //    普通的js可调用对象
     private val jsCallableObjectMap=HashMap<String,JsCallableObject>()
 //    回调队列
@@ -69,13 +70,29 @@ class ZebView: WebView {
     private val mainHandler=Handler(Looper.getMainLooper())
     private var callbackHandler:Handler=mainHandler
 
-    private val baseService=BaseService()
+    private val baseService=BaseService(this)
+    private val baseJsObject=JsCallableObject(baseService)
 
     init {
         addJavascriptInterface(this,"zebview")
-//        手动添加内置服务 不触发onAdd
-        JsCallableObject(baseService).also {
-            namedJsCallableObjectMap["_base"]=it
+        webViewClient= object :WebViewClient(){
+            override fun shouldInterceptRequest(
+                view: WebView,
+                request: WebResourceRequest
+            ): WebResourceResponse? {
+                if(request.method=="GET" &&
+                    request.url.scheme=="http"&&
+                    request.url.host=="zv"){
+                    if(request.url.path=="/receive"){
+                        val data=callbackQueue.take().toByteArray()
+                        val input=ByteArrayInputStream(data)
+                        return WebResourceResponse(null,null,200,"OK", hashMapOf(
+                            "Access-Control-Allow-Origin" to "*"
+                        ),input)
+                    }
+                }
+                return super.shouldInterceptRequest(view, request)
+            }
         }
     }
 
@@ -92,11 +109,9 @@ class ZebView: WebView {
     }
 
     //添加一个 命名对象供js调用
-    fun addNamedJsObject(name:String, obj:Any): ZebView {
-        JsCallableObject(obj).also {
-            namedJsCallableObjectMap[name]=it
-            baseService.onAdd(obj)
-        }
+    fun addGlobalJsObject(name:String, obj:Any): ZebView {
+        //直接把他发送会JS,解析参数时，会自动生成匿名jsObject
+        baseService.onAdd(name,obj)
         return this
     }
 
@@ -111,19 +126,13 @@ class ZebView: WebView {
      * 调用有名字的对象
      */
     @JavascriptInterface
-    fun callNamedObject(module:String,func:String,args:String):String{
-        if(namedJsCallableObjectMap.containsKey(module)){
-            val api=namedJsCallableObjectMap[module]!!
-            if(api.hasFunc(func)){
-                val res= String(api.call(func,args))
-                println("end==============")
-                println(res)
-                return res
-            }else{
-                Log.w(TAG,"Function:${func} in Object:${module} is not found")
-            }
+    fun callBaseObject(func:String,args:String):String{
+        val api=baseJsObject
+        if(api.hasFunc(func)){
+            val res= String(api.call(func,args))
+            return res
         }else{
-            Log.w(TAG,"Object:${module} is not found")
+            Log.w(TAG,"Function:${func} in BaseObject is not found")
         }
         return "[]"
     }
@@ -151,18 +160,9 @@ class ZebView: WebView {
     }
 
     /**
-     * 阻塞接收native的消息 用于相应回调
-     */
-    @JavascriptInterface
-    fun receive():String{
-        return callbackQueue.take().stringify()
-    }
-
-    /**
      * 编码一个对象返回(类型)+(body)
      */
     fun encodeArg(arg:Any?):ByteArray{
-        println(arg)
         when(arg){
             null->{
                 return REST.NULL.v.toByteArray()
@@ -184,12 +184,41 @@ class ZebView: WebView {
             is String->{
                 return REST.STRING.v.toByteArray()+arg.toByteArray()
             }
+            //boolean
+            is Boolean->{
+                return REST.BOOLEAN.v.toByteArray()+if(arg) 0x01 else 0x00
+            }
             //array
             is Array<*> ->{
                 return REST.ARRAY.v.toByteArray()+encodeArray(arg)
             }
             //promise
-            is Promise<*>->{
+            is Promise<*> ->{
+                arg.then {
+                    appendResponse(object :Response{
+                        override fun toByteArray(): ByteArray {
+                            return byteArrayOf(Response.REST.PROMISE_FINISH.v)+
+                                    arg.getId().toByteArray()+
+                                    //停止符号
+                                    0+
+                                    //resolve符号
+                                    1+
+                                    encodeArg(it)
+                        }
+                    })
+                }.catch {
+                    appendResponse(object :Response{
+                        override fun toByteArray(): ByteArray {
+                            return byteArrayOf(Response.REST.PROMISE_FINISH.v)+
+                                    arg.getId().toByteArray()+
+                                    //停止符号
+                                    0+
+                                    //reject符号
+                                    0+
+                                    encodeArg(it)
+                        }
+                    })
+                }
                 return REST.PROMISE.v.toByteArray()+arg.getId().toByteArray()
             }
             //bytearray
@@ -205,7 +234,6 @@ class ZebView: WebView {
                         objectId,
                         arg
                     )
-                    println("object!!!!!!!")
                     return REST.OBJECT.v.toByteArray()+
                             //对象名称
                             objectId.toByteArray()+
@@ -225,14 +253,8 @@ class ZebView: WebView {
      */
     fun encodeArray(arg:Array<*>):ByteArray{
         val arr=ArrayList<Byte>()
-        println("start array")
-        println(arg)
-        println(arg.size)
         arg.forEach {
-            println("exec")
-            println(it)
             val data=encodeArg(it)
-            println(data.toStr())
             //length
             arr.addAll(ByteBuffer.allocate(4).putInt(data.size).array().asIterable())
             //body
@@ -302,6 +324,9 @@ class ZebView: WebView {
                 REQT.NULL.v->{
                     return null
                 }
+                REQT.BOOLEAN.v->{
+                    return body[0]==0x01.toByte()
+                }
                 else->{
                     //其他情况 非法
                     throw Exception("Not support type to decode")
@@ -313,8 +338,7 @@ class ZebView: WebView {
          * 解码数组
          * 数组为：[(长度)+(body)]
          */
-        private fun decodeArray(byteArray: ByteArray):ArrayList<Any?>{
-            println(byteArray.toStr())
+        private fun decodeArray(byteArray: ByteArray):Array<Any?>{
             val buffer=ByteBuffer.wrap(byteArray)
             val out=ArrayList<Any?>()
             while(buffer.remaining()>0){
@@ -326,7 +350,7 @@ class ZebView: WebView {
                 //解析数据
                 out.add(decodeArg(data))
             }
-            return out
+            return out.toArray()
         }
 
         fun call(name: String, argsString: String): ByteArray {
@@ -335,10 +359,9 @@ class ZebView: WebView {
             //转换参数 js调用native函数，参数一定是array
             val argsArray=decodeArray(argsString.toByteArray())
             //执行函数
-            val res=method.invoke(obj, *argsArray.toTypedArray())
+            val res=method.invoke(obj, *argsArray)
             //返回参数
             val r=encodeArg(res)
-            println(r.toStr())
             return r
         }
     }

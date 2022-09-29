@@ -3,11 +3,13 @@ package site.zbyte.zebview.callback
 interface Response {
 
     enum class REST(val v:Byte){
-        CALLBACK(0x01),
-        OBJECT_CALLBACK(0x02),
-        RELEASE_CALLBACK(0x03),
-        RELEASE_OBJECT(0x04)
+        EMPTY(0),
+        CALLBACK(1),
+        OBJECT_CALLBACK(2),
+        RELEASE_CALLBACK(3),
+        RELEASE_OBJECT(4),
+        PROMISE_FINISH(5)
     }
 
-    fun stringify():String
+    fun toByteArray():ByteArray
 }

@@ -1,55 +1,63 @@
-// import { encode, decode } from 'js-base64';
-import { num2arr,concatArr,arr2num,arr2float } from "./utils";
-/**
- * 基本类型 不管直接序列化
- * function 用_func#重命名然后传递字符串
- * 带有function的object 用_object#重命名后传递字符串
- */
-// const FUNCTION_PREFIX="_func#"
-// const OBJECT_PREFIX="_object#"
-// const BYTEARRAY_PREFIX="_bytes#"
-// const PROMISE_PREFIX="_promise#"
+import { num2arr, concatArr, arr2num, arr2float } from "./utils";
 
 // js请求native的数据类型
-const REQT={
-    NULL:1,
+const REQT = {
+    NULL: 1,
     //基本类型
-    STRING:2,
-    NUMBER:3,
+    STRING: 2,
+    NUMBER: 3,
+    BOOLEAN: 6,
     //特殊类型
-    FUNCTION:10,
-    OBJECT:11,
-    BYTEARRAY:12,
-    ARRAY:13
+    FUNCTION: 10,
+    OBJECT: 11,
+    BYTEARRAY: 12,
+    ARRAY: 13
 }
 // native响应的数据类型
-const REST={
-    NULL:1,
+const REST = {
+    NULL: 1,
     //基本类型
-    STRING:2,
-    INT:4,
-    FLOAT:5,
+    STRING: 2,
+    INT: 4,
+    FLOAT: 5,
+    BOOLEAN: 6,
     //特殊类型
-    OBJECT:11,
-    BYTEARRAY:12,
-    ARRAY:13,
-    PROMISE:14
+    OBJECT: 11,
+    BYTEARRAY: 12,
+    ARRAY: 13,
+    PROMISE: 14
+}
+
+// 异步回调消息处理
+const AREST = {
+    EMPTY:0,
+    CALLBACK: 1,
+    OBJECT_CALLBACK: 2,
+    RELEASE_CALLBACK: 3,
+    RELEASE_OBJECT: 4,
+    PROMISE_FINISH: 5
 }
 
 
 //存储回调的map
-const functionMap={}
+const functionMap = {}
 //存储带有回调function的map
-const objectMap={}
+const objectMap = {}
 //存储待pending的promise
-const promiseMap={}
+const promiseMap = {}
 
 //Native传回来的object
-const nativeObject={}
+const nativeObject = {}
 
 //TextEncoder
-const textEncoder=new TextEncoder()
-const textDecoder=new TextDecoder()
+const textEncoder = new TextEncoder()
+const textDecoder = new TextDecoder()
+
+//服务存储
+let api = {}
+
+// 没有获取到zebview 默认导出null
+let exportObject = null
 
 //生成随机字符串
 function randomString(e) {
@@ -62,79 +70,82 @@ function randomString(e) {
 }
 
 //编码参数
-function encodeArg(arg){
-    const c=arg.constructor
-    if(arg==null||arg==undefined){
-        return num2arr(REQT.NULL,1)
-    }else if(c==Number){
-        if(arg%1==0){
+function encodeArg(arg) {
+    const c = arg.constructor
+    if (arg == null || arg == undefined) {
+        return num2arr(REQT.NULL, 1)
+    } else if (c == Number) {
+        if (arg % 1 == 0) {
             //int or long
-            if(arg>0xffffffff){
+            if (arg > 0xffffffff) {
                 //long
                 return concatArr(
-                    num2arr(REQT.NUMBER,1),
-                    num2arr(arg,8)
+                    num2arr(REQT.NUMBER, 1),
+                    num2arr(arg, 8)
                 )
-            }else{
+            } else {
                 //int
                 return concatArr(
-                    num2arr(REQT.NUMBER,1),
-                    num2arr(arg,4)
+                    num2arr(REQT.NUMBER, 1),
+                    num2arr(arg, 4)
                 )
             }
-        }else{
+        } else {
             //float or double
             //not support float only
-            let buf=new Float32Array([arg])
+            let buf = new Float32Array([arg])
             return concatArr(
-                num2arr(REQT.NUMBER,1),
+                num2arr(REQT.NUMBER, 1),
                 new Int8Array(buf.buffer)
             )
         }
-    }else if(c==String){
+    } else if (c == String) {
         return concatArr(
-            num2arr(REQT.STRING,1),
+            num2arr(REQT.STRING, 1),
             textEncoder.encode(arg)
         )
-    }else if(c==Function){
-        const token=randomString(16)
-        functionMap[token]=arg
+    } else if (c == Function) {
+        const token = randomString(16)
+        functionMap[token] = arg
         return concatArr(
-            num2arr(REQT.FUNCTION,1),
+            num2arr(REQT.FUNCTION, 1),
             textEncoder.encode(token)
         )
-    }else if(c==Object){
-        const token=randomString(16)
-        objectMap[token]=arg
+    } else if (c == Object) {
+        const token = randomString(16)
+        objectMap[token] = arg
         return concatArr(
-            num2arr(REQT.OBJECT,1),
+            num2arr(REQT.OBJECT, 1),
             textEncoder.encode(token)
         )
-    }else if(c==Uint8Array){
+    } else if (c == Uint8Array) {
         return concatArr(
-            num2arr(REQT.BYTEARRAY,1),
+            num2arr(REQT.BYTEARRAY, 1),
             c
         )
-    }else if(c==Array){
+    } else if (c == Array) {
         return concatArr(
-            num2arr(REQT.ARRAY,1),
+            num2arr(REQT.ARRAY, 1),
             encodeArray(arg)
         )
-    }else{
+    } else if (c == Boolean) {
+        return concatArr(
+            num2arr(REQT.BOOLEAN, 1),
+            new Uint8Array([arg ? 1 : 0])
+        )
+    } else {
         throw new Error("Not support type to encode")
     }
 }
 
 //编码参数列表
-function encodeArray(args){
-    let res=new Uint8Array(0)
-    for(const a of args){
-        console.log(a)
-        const buf=encodeArg(a)
-        console.log(buf)
-        res=concatArr(
+function encodeArray(args) {
+    let res = new Uint8Array(0)
+    for (const a of args) {
+        const buf = encodeArg(a)
+        res = concatArr(
             res,
-            num2arr(buf.length,4),
+            num2arr(buf.length, 4),
             buf
         )
     }
@@ -142,13 +153,11 @@ function encodeArray(args){
 }
 
 //解码参数
-function decodeArg(bytes){
-    console.log(bytes)
+function decodeArg(bytes) {
     //先读取一个标志位
-    const t=bytes[0]
-    console.log("type",t)
-    const body=bytes.slice(1)
-    switch(t){
+    const t = bytes[0]
+    const body = bytes.slice(1)
+    switch (t) {
         case REST.NULL:
             return null
         case REST.STRING:
@@ -158,91 +167,75 @@ function decodeArg(bytes){
         case REST.FLOAT:
             return arr2float(body)
         case REST.OBJECT:
-            const zeroIndex=body.indexOf(0)
-            const token=textDecoder.decode(
-                body.slice(0,zeroIndex)
+            const zeroIndex = body.indexOf(0)
+            const token = textDecoder.decode(
+                body.slice(0, zeroIndex)
             )
-            const funcListStr=textDecoder.decode(
-                body.size(zeroIndex+1)
+            const funcListStr = textDecoder.decode(
+                body.slice(zeroIndex + 1)
             )
-            funcList=funcListStr.split(',')
-            const obj=createApi(token,funcList,false)
-            nativeObject[token]=obj
+            const funcList = funcListStr.split(',')
+            const obj = createObject(token, funcList, false)
+            nativeObject[token] = obj
             return obj
         case REST.BYTEARRAY:
             return body
         case REST.PROMISE:
-            const id=textDecoder.decode(body)
-            return new Promise((resolve,reject)=>{
-                promiseMap[id]={
+            const id = textDecoder.decode(body)
+            return new Promise((resolve, reject) => {
+                promiseMap[id] = {
                     resolve,
                     reject
                 }
             })
         case REST.ARRAY:
             return decodeArray(body)
+        case REST.BOOLEAN:
+            return body[0] == 1
+        default:
+            throw new Error("Not support type to decode")
     }
 }
 
 //解码参数数组
-function decodeArray(bytes){
+function decodeArray(bytes) {
     //arraybuffer
-    let buffer=bytes.buffer
+    let buffer = bytes.buffer
     //返回参数
-    let res=[]
-    let index=0
-    while(index<bytes.length){
+    let res = []
+    let index = 0
+    while (index < bytes.length) {
         //size
-        console.log(buffer,index)
-        const size=new Uint32Array(buffer,index,4)[0]
-        console.log(size)
-        index+=4
+        const size = new DataView(buffer, index, 4).getInt32(0)
+        index += 4
         //body
-        const data=new Uint8Array(buffer,index,size)
+        const data = new Uint8Array(buffer, index, size)
         res.push(decodeArg(data))
+        index += size
     }
     return res
 }
 
 /**
- * 调用Native指定模块指定代码
- */
-function invokeNative(moduleName,funcName,args,named){
-    let res=null
-    if(named){
-        res=window.zebview.callNamedObject(
-            moduleName,
-            funcName,
-            args
-        )
-    }else{
-        res=window.zebview.callObject(
-            moduleName,
-            funcName,
-            args
-        )
-    }
-    return decodeArg(
-        textEncoder.encode(res)
-    )
-}
-
-/**
  * 创建一个proxy代理的api
  */
-function createApi(name,funcList=[],named){
-    // console.log("log:createApi:"+arguments)
-    return new Proxy({},{
-        get(_,key){
-            for(const func of funcList){
-                if(func===key){
-                    return function(){
+function createObject(name, funcList = []) {
+    return new Proxy({}, {
+        get(_, key) {
+            for (const func of funcList) {
+                if (func === key) {
+                    return function () {
                         //调用该方法
-                        console.log(arguments)
-                        const bytes=encodeArray(arguments)
-                        console.log(bytes)
-                        const args=textDecoder.decode(bytes)
-                        return invokeNative(name,func,args,named)
+                        const bytes = encodeArray(arguments)
+                        const args = textDecoder.decode(bytes)
+                        const res = window.zebview.callObject(
+                            name,
+                            func,
+                            args
+                        )
+                        return decodeArg(
+                            textEncoder.encode(res)
+                        )
                     }
                 }
             }
@@ -251,36 +244,130 @@ function createApi(name,funcList=[],named){
     })
 }
 
-//服务存储
-let api={}
-
-function addApi(name,funcList){
-    api[name]=createApi(name,funcList,true)
+/**
+ * 创建baseObject
+ */
+function createBaseObject(funcList = []) {
+    return new Proxy({}, {
+        get(_, key) {
+            for (const func of funcList) {
+                if (func === key) {
+                    return function () {
+                        //调用该方法
+                        const bytes = encodeArray(arguments)
+                        const args = textDecoder.decode(bytes)
+                        const res = window.zebview.callBaseObject(
+                            func,
+                            args
+                        )
+                        return decodeArg(
+                            textEncoder.encode(res)
+                        )
+                    }
+                }
+            }
+            return undefined
+        }
+    })
 }
 
-let exportObject=null
-
-function stringToUint8Array(str){
-    var arr = [];
-    for (var i = 0, j = str.length; i < j; ++i) {
-      arr.push(str.charCodeAt(i));
+function processMessage(bytes) {
+    const t = bytes[0]
+    const body = bytes.slice(1)
+    switch (t) {
+        case AREST.EMPTY:
+            //空消息
+            return
+        case AREST.CALLBACK:
+            {
+                // 调用回调
+                const i = body.indexOf(0)
+                const token = textDecoder.decode(body.slice(0, i))
+                const func = functionMap[token]
+                if (func) {
+                    const argsRaw = body.slice(i + 1)
+                    const args = decodeArray(argsRaw)
+                    func.apply(func, args)
+                }
+            }
+            break
+        case AREST.OBJECT_CALLBACK:
+            {
+                //调用对象内的回调
+                const i = body.indexOf(0)
+                const token=textDecoder.decode(body.slice(0,i))
+                const obj=objectMap[token]
+                if(obj){
+                    const i2=body.indexOf(0,i+1)
+                    const funcName=textDecoder.decode(body.slice(i+1,i2))
+                    const func=obj[funcName]
+                    if(func){
+                        const argsRaw=body.slice(i2+1)
+                        const args=decodeArray(argsRaw)
+                        func.apply(func,args)
+                    }
+                }
+            }
+            break
+        case AREST.RELEASE_CALLBACK:
+            {
+                //释放方法
+                const name=textDecoder.decode(body)
+                delete functionMap[name]
+            }
+            break
+        case AREST.RELEASE_OBJECT:
+            {
+                //释放对象
+                const name=textDecoder.decode(body)
+                delete objectMap[name]
+            }
+            break
+        case AREST.PROMISE_FINISH:
+            {
+                //promise
+                const i=body.indexOf(0)
+                const name=textDecoder.decode(body.slice(0,i))
+                const promise=promiseMap[name]
+                if(promise){
+                    const success=body[i+1]==1
+                    const arg=decodeArg(body.slice(i+2))
+                    if(success){
+                        promise.resolve(arg)
+                    }else{
+                        promise.reject(arg)
+                    }
+                }
+            }
+            break
     }
-   
-    var tmpUint8Array = new Uint8Array(arr);
-    return tmpUint8Array
-  }
+}
 
-if(window.zebview){
-    const baseApi=createApi("_base",["registerServiceWatcher"],true)
-    const objList=baseApi.registerServiceWatcher((info)=>{
-        addApi(info['name'],info['funcList'])
+/**
+ * 消息循环
+ */
+async function messageLoop() {
+    while (true) {
+        const res = await fetch('http://zv/receive')
+        const data = await res.arrayBuffer()
+        processMessage(new Uint8Array(data))
+    }
+}
+
+if (window.zebview) {
+    const baseApi = createBaseObject(["registerServiceWatcher"], true)
+    const objList = baseApi.registerServiceWatcher((name, obj) => {
+        api[name] = obj
     })
-    console.log("list",objList)
-    for(const item of objList){
-        addApi(item['name'],item['funcList'])
+    for (let i = 0; i < objList.length; i++) {
+        const name = objList[i++]
+        const obj = objList[i]
+        api[name] = obj
     }
-    exportObject={
-        api:api
+    // 启动消息循环 接收消息
+    messageLoop()
+    exportObject = {
+        api: api
     }
 }
 

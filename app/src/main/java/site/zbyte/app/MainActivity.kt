@@ -6,15 +6,13 @@ import android.os.Handler
 import android.os.Looper
 import android.webkit.*
 import androidx.appcompat.app.AppCompatActivity
-import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
 import site.zbyte.zebview.JavascriptClass
 import site.zbyte.zebview.callback.Callback
 import site.zbyte.zebview.callback.CallbackObject
-import site.zbyte.zebview.Promise
+import site.zbyte.zebview.callback.Promise
 import site.zbyte.zebview.ZebView
-
-private val handler=Handler(Looper.getMainLooper())
+import site.zbyte.zebview.value.JsNumber
 
 class MainActivity : AppCompatActivity() {
 
@@ -27,27 +25,27 @@ class MainActivity : AppCompatActivity() {
 
         val zv=findViewById<ZebView>(R.id.zv)
 
-        zv.addNamedJsObject("TestService", TestService)
+        zv.addGlobalJsObject("TestService", TestService)
 
         zv.clearCache(true)
 
 
-        val assetLoader = WebViewAssetLoader.Builder()
-            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
-            .build()
+//        val assetLoader = WebViewAssetLoader.Builder()
+//            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+//            .build()
 
-        zv.webViewClient= object :WebViewClient(){
-            override fun shouldInterceptRequest(
-                view: WebView,
-                request: WebResourceRequest
-            ): WebResourceResponse? {
-                val res=assetLoader.shouldInterceptRequest(request.url)
-                if(request.url.toString().endsWith(".js")){
-                    res?.mimeType="text/javascript"
-                }
-                return res
-            }
-        }
+//        zv.webViewClient= object :WebViewClient(){
+//            override fun shouldInterceptRequest(
+//                view: WebView,
+//                request: WebResourceRequest
+//            ): WebResourceResponse? {
+//                val res=assetLoader.shouldInterceptRequest(request.url)
+//                if(request.url.toString().endsWith(".js")){
+//                    res?.mimeType="text/javascript"
+//                }
+//                return res
+//            }
+//        }
         //设置回调线程
         zv.setCallbackHandler(Handler(Looper.getMainLooper()))
 
@@ -65,36 +63,30 @@ class MainActivity : AppCompatActivity() {
 object TestService{
     @JavascriptInterface
     fun test(
-        argInt:Int,
+        argInt:JsNumber,
         argStr:String,
         argBool:Boolean,
         argArr:Array<Any>,
-        argObj:JSONObject,
         argCallback: Callback,
         argObject: CallbackObject
     ){
         println(Thread.currentThread())
         println("$argInt $argStr $argBool")
-        println(argObj.toString())
         argArr.forEach {
             println(it)
         }
         argCallback.call(123456,"test string",true, arrayOf(456798,"string in array",false))
-        val obj=JSONObject()
-        obj.put("name","Jack")
-        argObject.call("success",obj)
+
+        argObject.call("success","return")
     }
 
-    private val promise=Promise<JSONObject>{
+    private val promise= Promise<String>{
         println("working!!!!!!!!1")
-        val obj=JSONObject()
-        obj.put("name","张三")
-        obj.put("age",18)
-        it.resolve(obj)
+        it.reject("Promise work done")
     }
 
     @JavascriptInterface
-    fun manyWork(): Promise<JSONObject> {
+    fun manyWork(): Promise<String> {
         return promise
     }
 }

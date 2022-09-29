@@ -16,30 +16,24 @@ class Callback(
      */
     fun call(vararg args:Any?){
         zv.appendResponse(object :Response{
-            override fun stringify(): String {
-                return String(
-                    //回调为方法
-                    Response.REST.CALLBACK.v.toByteArray()+
+            override fun toByteArray():ByteArray {
+                return Response.REST.CALLBACK.v.toByteArray()+
                             //方法标记名称
                             functionToken.toByteArray()+
                             //0分割内容
                             0+
                             //回调内容
                             zv.encodeArray(args)
-                )
             }
         })
     }
 
     protected fun finalize(){
         zv.appendResponse(object :Response{
-            override fun stringify(): String {
-                return String(
-                    //释放回调
-                    Response.REST.RELEASE_CALLBACK.v.toByteArray()+
+            override fun toByteArray(): ByteArray {
+                return Response.REST.RELEASE_CALLBACK.v.toByteArray()+
                             //方法名称
                             functionToken.toByteArray()
-                )
             }
         })
     }

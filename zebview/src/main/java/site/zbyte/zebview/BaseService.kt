@@ -4,10 +4,12 @@ import android.webkit.JavascriptInterface
 import org.json.JSONArray
 import org.json.JSONObject
 import site.zbyte.zebview.callback.Callback
+import site.zbyte.zebview.callback.EmptyResponse
 
 @JavascriptClass
-class BaseService {
+class BaseService(private val zv:ZebView) {
 
+    //存放初始化所用所有对象 不释放
     private var waitForCallback = ArrayList<Any>()
     private var callbackObj : Callback?=null
 
@@ -15,24 +17,23 @@ class BaseService {
     @JavascriptInterface
     fun registerServiceWatcher(obj: Callback):Array<Any>{
         synchronized(this) {
+            //每次重新注册服务，代表js端刷新了界面，向管道里写入空数据，避免上一个页面阻塞的receive把新第一个消息拿走了
+            zv.appendResponse(EmptyResponse())
             callbackObj = obj
-            val res=waitForCallback.toArray()
-            println("register:${res.size}")
-//            waitForCallback.clear()
-            return res
+            return waitForCallback.toArray()
         }
     }
 
-    fun onAdd(obj:Any){
-        println("onAdd")
+    fun onAdd(name:String,obj:Any){
         if(!obj::class.java.isAnnotationPresent(JavascriptClass::class.java))
             return
-        println("add success")
         synchronized(this){
-            if(callbackObj==null){
-                waitForCallback.add(obj)
-            }else{
-                callbackObj!!.call(obj)
+            //保存一下
+            waitForCallback.add(name)
+            waitForCallback.add(obj)
+            //如果有回调 回调一下
+            if(callbackObj!=null){
+                callbackObj!!.call(name,obj)
             }
         }
     }
