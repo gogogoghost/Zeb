@@ -41,6 +41,7 @@ class ZebView: WebView {
      * Native->JS 标志
      */
     enum class REST(val v:Byte){
+        //null
         NULL(1),
         //基本类型
         STRING(2),
@@ -51,7 +52,8 @@ class ZebView: WebView {
         OBJECT(11),
         BYTEARRAY(12),
         ARRAY(13),
-        PROMISE(14)
+        PROMISE(14),
+        ERROR(15),
     }
 
     constructor(context: Context):super(context)
@@ -109,50 +111,73 @@ class ZebView: WebView {
     }
 
     //添加一个 命名对象供js调用
-    fun addGlobalJsObject(name:String, obj:Any): ZebView {
+    fun addJsObject(name:String, obj:Any): ZebView {
         //直接把他发送会JS,解析参数时，会自动生成匿名jsObject
         baseService.onAdd(name,obj)
         return this
     }
 
     //添加一个 匿名对象供js调用
-    private fun addJsObject(id:String,obj:Any):JsCallableObject{
+    private fun addJsObjectInterval(id:String,obj:Any):JsCallableObject{
         return JsCallableObject(obj).also {
             jsCallableObjectMap[id]=it
         }
     }
 
     /**
-     * 调用有名字的对象
+     * 构造错误
      */
     @JavascriptInterface
-    fun callBaseObject(func:String,args:String):String{
-        val api=baseJsObject
-        if(api.hasFunc(func)){
-            val res= String(api.call(func,args))
-            return res
-        }else{
-            Log.w(TAG,"Function:${func} in BaseObject is not found")
-        }
-        return "[]"
+    fun encodeError(msg:String):ByteArray{
+        return byteArrayOf(REST.ERROR.v)+
+                msg.toByteArray()
     }
 
     /**
-     * 调用无名字的对象
+     * 调用基础base对象
+     */
+    @JavascriptInterface
+    fun callBaseObject(func:String,args:String):String{
+        return if(baseJsObject.hasFunc(func)){
+            try{
+                String(baseJsObject.call(func,args))
+            }catch (e:Exception){
+                String(encodeError(e.toString()))
+            }
+        }else{
+            val msg="Function:${func} in BaseObject is not found"
+            String(encodeError(msg))
+        }
+    }
+
+    /**
+     * 调用匿名对象
      */
     @JavascriptInterface
     fun callObject(id:String,func:String,args:String):String{
-        if(jsCallableObjectMap.containsKey(id)){
+        return if(jsCallableObjectMap.containsKey(id)){
             val api=jsCallableObjectMap[id]!!
             if(api.hasFunc(func)){
-                return String(api.call(func,args))
+                try{
+                    String(api.call(func,args))
+                }catch (e:Exception){
+                    String(encodeError(e.toString()))
+                }
             }else{
-                Log.w(TAG,"Function:${func} in Object:${id} is not found")
+                val msg="Function:${func} in Object:${id} is not found"
+                String(encodeError(msg))
             }
         }else{
-            Log.w(TAG,"Object:${id} is not found")
+            val msg="Object:${id} is not found"
+            String(encodeError(msg))
         }
-        return "[]"
+    }
+
+    /**
+     * 释放匿名对象
+     */
+    fun releaseObject(id:String){
+        jsCallableObjectMap.remove(id)
     }
 
     fun appendResponse(res:Response){
@@ -230,7 +255,7 @@ class ZebView: WebView {
                 if(arg::class.java.isAnnotationPresent(JavascriptClass::class.java)){
                     //为对象生成name
                     val objectId= randomString(16)
-                    val jsObject=addJsObject(
+                    val jsObject=addJsObjectInterval(
                         objectId,
                         arg
                     )

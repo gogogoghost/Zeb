@@ -25,7 +25,7 @@ class MainActivity : AppCompatActivity() {
 
         val zv=findViewById<ZebView>(R.id.zv)
 
-        zv.addGlobalJsObject("TestService", TestService)
+        zv.addJsObject("TestService", TestService)
 
         zv.clearCache(true)
 
@@ -60,7 +60,22 @@ class MainActivity : AppCompatActivity() {
 }
 
 @JavascriptClass
+object WorkObject{
+    @JavascriptInterface
+    fun work():String{
+        throw Error("I am a error from native")
+        return "workObject work done"
+    }
+}
+
+@JavascriptClass
 object TestService{
+
+    @JavascriptInterface
+    fun getWorker():WorkObject{
+        return WorkObject
+    }
+
     @JavascriptInterface
     fun test(
         argInt:JsNumber,

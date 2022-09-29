@@ -25,7 +25,8 @@ const REST = {
     OBJECT: 11,
     BYTEARRAY: 12,
     ARRAY: 13,
-    PROMISE: 14
+    PROMISE: 14,
+    ERROR: 15
 }
 
 // 异步回调消息处理
@@ -45,9 +46,6 @@ const functionMap = {}
 const objectMap = {}
 //存储待pending的promise
 const promiseMap = {}
-
-//Native传回来的object
-const nativeObject = {}
 
 //TextEncoder
 const textEncoder = new TextEncoder()
@@ -152,12 +150,21 @@ function encodeArray(args) {
     return res
 }
 
+//监听对象回收，并且调用native释放
+function registerObjectRelease(token,obj){
+    // new FinalizationRegistry((token)=>{
+    //     window.zebview.releaseObject(token)
+    // }).register(obj,token)
+}
+
 //解码参数
 function decodeArg(bytes) {
     //先读取一个标志位
     const t = bytes[0]
     const body = bytes.slice(1)
     switch (t) {
+        case REST.ERROR:
+            throw new Error("Native exception:"+textDecoder.decode(body))
         case REST.NULL:
             return null
         case REST.STRING:
@@ -175,8 +182,9 @@ function decodeArg(bytes) {
                 body.slice(zeroIndex + 1)
             )
             const funcList = funcListStr.split(',')
-            const obj = createObject(token, funcList, false)
-            nativeObject[token] = obj
+            const obj = createObject(token, funcList)
+            //当对象不使用的时候 通知native回收内存
+            registerObjectRelease(token,obj)
             return obj
         case REST.BYTEARRAY:
             return body
@@ -271,6 +279,9 @@ function createBaseObject(funcList = []) {
     })
 }
 
+/**
+ * 处理队列下来的消息
+ */
 function processMessage(bytes) {
     const t = bytes[0]
     const body = bytes.slice(1)
@@ -325,7 +336,7 @@ function processMessage(bytes) {
             break
         case AREST.PROMISE_FINISH:
             {
-                //promise
+                //promise finalize
                 const i=body.indexOf(0)
                 const name=textDecoder.decode(body.slice(0,i))
                 const promise=promiseMap[name]
@@ -337,6 +348,7 @@ function processMessage(bytes) {
                     }else{
                         promise.reject(arg)
                     }
+                    delete promiseMap[name]
                 }
             }
             break

@@ -15,8 +15,10 @@ console.log(zv.api)
 //         }
 //     }
 // )
-zv.api.TestService.manyWork().then((res)=>{
-    console.log("resolve",res)
-}).catch((err)=>{
-    console.log("reject",err)
-})
+const worker=zv.api.TestService.getWorker()
+console.log(worker.work())
+// zv.api.TestService.manyWork().then((res)=>{
+//     console.log("resolve",res)
+// }).catch((err)=>{
+//     console.log("reject",err)
+// })
