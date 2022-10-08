@@ -30,20 +30,40 @@ Create ZebView in layout xml file or by java code(kotlin)
 
 ```kotlin
 //Make a service
+@JavascriptClass
 object TestServiceObject{
     @JavascriptInterface
     fun test(intVal:Int,strVal:String,boolVal:Boolean){
         //This function invoke by js and can return something
         //See [Support Params Type] behind
     }
+    
+    @JavascriptInterface
+    fun manyWork():Promise<String>{
+        return Promise<String>{
+            //do many work
+            it.resolve("result")
+        }
+    }
 }
 
 //Create ZebView
-val zv=ZebView(context)
+val webView=new WebView(context)
+val zv=ZebView(webView)
+
+//set webViewClient
+webView.webViewClient= object :WebViewClient(){
+    override fun shouldInterceptRequest(
+        view: WebView,
+        request: WebResourceRequest
+    ): WebResourceResponse? {
+        return zv.shouldInterceptRequest(view,request)
+    }
+}
 
 //Add Service
-zv.addService("TestService",TestServiceObject)
-    .addService("SecondService",SecondServiceObject)
+zv.addJsObject("TestService",TestServiceObject)
+    .addJsObject("SecondService",SecondServiceObject)
 
 //Load your page
 zv.loadUrl("http://192.168.0.137:3000")
@@ -55,44 +75,30 @@ See [zebview-bridge](https://github.com/gogogoghost/Zebview/tree/master/frontend
 
 ### Support Params Type
 
-Javascript -> Java
+Javascript -> Java (function params)
 
-- Number -> Integer/Long
+- NULL -> NULL
 - String -> String
+- Number(integer) -> Integer/Long(>0xffffffff)
+- Number(double) -> Double
 - Boolean -> Boolean
+- Callback function -> [Callback](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/callback/Callback.kt)
+- Object with function -> [CallbackObject](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/callback/CallbackObject.kt)
 - Uint8Array -> byte[]
 - Array -> Array<Any>
-- Callback function -> Callback
-- Object(callback only) -> CallbackObject
-- Object(data only) -> JSONObject
+- Object without function -> org.json.JSONObject
 
 ---
 
-Java -> Javascript(callback)
+Java -> Javascript (callback params or function result)
 
-- Integer/Long -> Number
+- NULL -> NULL
 - String -> String
+- Integer/Long -> Number
+- Float/Double -> Number
 - Boolean -> Boolean
+- Object with [JavascriptClass](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/JavascriptClass.kt) annotation -> Object with function callable (function need **JavascriptInterface** annotation)
 - byte[] -> Uint8Array
 - Array<Any> -> Array
-- JSONObject -> Object
 - [Promise](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/Promise.kt)<T> -> Promise<T>
-
-### Callback
-
-When android receive a Callback or CallbackObject from js
-
-```kotlin
-//Callback
-callback.call(args0,args1,args2)
-//CallbackObject
-callbackObject.call("onSuccess",args0,args1,args2)
-callbackObject.call("onFail",args0,args1,args2)
-```
-
-You need to release a callback if you don't need it any more.
-
-```kotlin
-callback.release()
-callbackObject.release()
-```
+- org.json.JSONObject -> Object

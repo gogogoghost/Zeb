@@ -26,9 +26,14 @@ Call service
 
 ```javascript
 //Import
-import getService from 'zebview-bridge'
-//Get. If not in a ZebView's environmnet will got null
-const services=getService()
-//Call
-services.TestService.test(789,"string",false)
+//If not in a ZebView's environmnet, api will be null
+import {api} from 'zebview-bridge'
+//Call native api
+const res=api.TestService.test(789,"string",false)
+//Support promise
+api.TestService.manyWork().then(()=>{
+    //promise resolve
+}).catch(()=>{
+    //promise reject
+})
 ```
