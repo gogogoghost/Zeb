@@ -1,7 +1,7 @@
 {
   "name": "zebview-bridge",
   "description": "Javascript bridge for Zebview which is a Android webview library",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "main": "bridge.js",
   "scripts": {
     "dev": "vite",

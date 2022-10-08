@@ -339,7 +339,17 @@ class ZebView(private val src:WebView) {
                     return decodeArray(body)
                 }
                 REQT.INT.v->{
-                    return ByteBuffer.wrap(body).long
+                    return when(body.size){
+                        8->{
+                            ByteBuffer.wrap(body).long
+                        }
+                        4->{
+                            ByteBuffer.wrap(body).int
+                        }
+                        else->{
+                            throw Exception("Not valid integer bytes size:${body.size}")
+                        }
+                    }
                 }
                 REQT.FLOAT.v->{
                     return ByteBuffer.wrap(body).double

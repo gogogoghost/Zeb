@@ -91,11 +91,19 @@ function encodeArg(arg) {
         return num2arr(REQT.NULL, 1)
     } else if (c == Number) {
         if (arg % 1 == 0) {
-            //use 8 bytes
-            return concatArr(
-                num2arr(REQT.INT, 1),
-                num2arr(arg, 8)
-            )
+            if(arg > 0xffffffff){
+                //use 8 bytes
+                return concatArr(
+                    num2arr(REQT.INT, 1),
+                    num2arr(arg, 8)
+                )
+            }else{
+                //use 4 bytes
+                return concatArr(
+                    num2arr(REQT.INT, 1),
+                    num2arr(arg, 4)
+                )
+            }
         } else {
             //use 8 bytes
             const {buf,view}=makeBuffer(REQT.FLOAT,8)
