@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.util.Base64
 import android.view.View
 import android.webkit.*
+import org.json.JSONObject
 import site.zbyte.zebview.callback.Callback
 import site.zbyte.zebview.callback.CallbackObject
 import site.zbyte.zebview.callback.Promise
@@ -31,7 +32,8 @@ class ZebView(private val src:WebView) {
         FUNCTION(10),
         OBJECT(11),
         BYTEARRAY(12),
-        ARRAY(13)
+        ARRAY(13),
+        JSON(16)
     }
     /**
      * Native->JS 标志
@@ -50,6 +52,7 @@ class ZebView(private val src:WebView) {
         ARRAY(13),
         PROMISE(14),
         ERROR(15),
+        JSON(16)
     }
 
 //    普通的js可调用对象
@@ -241,6 +244,10 @@ class ZebView(private val src:WebView) {
             is ByteArray->{
                 return REST.BYTEARRAY.v.toByteArray()+arg
             }
+            //json
+            is JSONObject->{
+                return REST.JSON.v.toByteArray()+arg.toString().toByteArray()
+            }
             else->{
                 //判断是不是Object
                 if(arg::class.java.isAnnotationPresent(JavascriptClass::class.java)){
@@ -345,6 +352,9 @@ class ZebView(private val src:WebView) {
                 }
                 REQT.BOOLEAN.v->{
                     return body[0]==0x01.toByte()
+                }
+                REQT.JSON.v->{
+                    return JSONObject(String(body))
                 }
                 else->{
                     //其他情况 非法

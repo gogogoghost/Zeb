@@ -13,7 +13,8 @@ const REQT = {
     FUNCTION: 10,
     OBJECT: 11,
     BYTEARRAY: 12,
-    ARRAY: 13
+    ARRAY: 13,
+    JSON:16
 }
 // native响应的数据类型
 const REST = {
@@ -28,7 +29,8 @@ const REST = {
     BYTEARRAY: 12,
     ARRAY: 13,
     PROMISE: 14,
-    ERROR: 15
+    ERROR: 15,
+    JSON:16
 }
 
 // 异步回调消息处理
@@ -73,6 +75,15 @@ function randomString(e) {
     return n
 }
 
+function isObjHasFunction(obj){
+    for(const key in obj){
+        if(obj[key].constructor==Function){
+            return true
+        }
+    }
+    return false
+}
+
 //编码参数
 function encodeArg(arg) {
     const c = arg.constructor
@@ -104,12 +115,22 @@ function encodeArg(arg) {
             textEncoder.encode(token)
         )
     } else if (c == Object) {
-        const token = randomString(16)
-        objectMap[token] = arg
-        return concatArr(
-            num2arr(REQT.OBJECT, 1),
-            textEncoder.encode(token)
-        )
+        //判断对象内有没有方法
+        if(isObjHasFunction(arg)){
+            const token = randomString(16)
+            objectMap[token] = arg
+            return concatArr(
+                num2arr(REQT.OBJECT, 1),
+                textEncoder.encode(token)
+            )
+        }else{
+            //当成数据对象传递
+            const body=JSON.stringify(arg)
+            return concatArr(
+                num2arr(REQT.JSON,1),
+                textEncoder.encode(body)
+            )
+        }
     } else if (c == Uint8Array) {
         return concatArr(
             num2arr(REQT.BYTEARRAY, 1),
@@ -187,6 +208,8 @@ function decodeArg(bytes) {
             return decodeArray(body)
         case REST.BOOLEAN:
             return body[0] == 1
+        case REST.JSON:
+            return JSON.parse(textDecoder.decode(body))
         default:
             throw new Error("Not support type to decode")
     }

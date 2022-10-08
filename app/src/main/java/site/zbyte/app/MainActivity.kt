@@ -103,4 +103,12 @@ object TestService{
     fun manyWork(): Promise<String> {
         return promise
     }
+
+    @JavascriptInterface
+    fun jsonTest(obj:JSONObject):JSONObject{
+        println("I got json:${obj.toString()}")
+        val obj=JSONObject()
+        obj.put("name","Jack")
+        return obj
+    }
 }

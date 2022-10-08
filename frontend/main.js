@@ -1,12 +1,8 @@
 import zv from './bridge'
 
+const api=zv.api
 
-if(zv==null){
-    throw "Get service error"
-}
-
-console.log(zv.api)
-const res=zv.api.TestService.test(
+const res=api.TestService.test(
     10,
     1.1,
     "abcdefg"
@@ -26,8 +22,12 @@ console.log(res)
 
 
 
-zv.api.TestService.manyWork().then((res)=>{
+api.TestService.manyWork().then((res)=>{
     console.log("resolve",res)
 }).catch((err)=>{
     console.log("reject",err)
 })
+
+console.log(api.TestService.jsonTest({
+    "age":99
+}))
