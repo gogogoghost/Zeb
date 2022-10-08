@@ -1,6 +1,4 @@
-import zv from './bridge'
-
-const api=zv.api
+import {api} from './bridge'
 
 const res=api.TestService.test(
     10,

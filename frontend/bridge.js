@@ -55,10 +55,10 @@ const textEncoder=new TextEncoder()
 const textDecoder=new TextDecoder()
 
 //服务存储
-let api = {}
+let apiInternal = {}
 
 // 没有获取到zebview 默认导出null
-let exportObject = null
+let api = null
 
 // 内存释放注册器
 const register=new FinalizationRegistry((token)=>{
@@ -379,18 +379,18 @@ async function messageLoop() {
 if (window.zebview) {
     const baseApi = createBaseObject(["registerServiceWatcher"], true)
     const objList = baseApi.registerServiceWatcher((name, obj) => {
-        api[name] = obj
+        apiInternal[name] = obj
     })
     for (let i = 0; i < objList.length; i++) {
         const name = objList[i++]
         const obj = objList[i]
-        api[name] = obj
+        apiInternal[name] = obj
     }
     // 启动消息循环 接收消息
     messageLoop()
-    exportObject = {
-        api: api
-    }
+    api=apiInternal
 }
 
-export default exportObject
+export {
+    api
+}
