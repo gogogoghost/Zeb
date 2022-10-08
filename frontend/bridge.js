@@ -1,4 +1,4 @@
-import { num2arr, concatArr, arr2num, arr2float } from "./utils";
+import { num2arr, concatArr, arr2num, arr2float,makeBuffer } from "./utils";
 import {Base64} from 'js-base64'
 
 // js请求native的数据类型
@@ -87,9 +87,7 @@ function encodeArg(arg) {
             )
         } else {
             //use 8 bytes
-            let buf=new Uint8Array(9)
-            let view=new DataView(buf.buffer)
-            view.setInt8(0,REQT.FLOAT)
+            const {buf,view}=makeBuffer(REQT.FLOAT,8)
             view.setFloat64(1,arg)
             return buf
         }

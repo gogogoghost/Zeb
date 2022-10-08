@@ -48,3 +48,14 @@ export function concatArr(...arr){
     }
     return res
 }
+
+//构造请求结构
+export function makeBuffer(type,length){
+    const buf=new Uint8Array(1+length)
+    const view=new DataView(buf.buffer)
+    view.setInt8(0,type)
+    return{
+        buf,
+        view
+    }
+}
