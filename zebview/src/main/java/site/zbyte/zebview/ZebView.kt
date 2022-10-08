@@ -120,8 +120,6 @@ class ZebView(private val src:WebView) {
      */
     @JavascriptInterface
     fun callBaseObject(func:String,args:String):String{
-        println(args)
-        println(decodeBase64(args).toStr())
         return if(baseJsObject.hasFunc(func)){
             try{
                 encodeBase64(baseJsObject.call(
@@ -365,7 +363,6 @@ class ZebView(private val src:WebView) {
             while(buffer.remaining()>0){
                 //获取长度
                 val size=buffer.int
-                println(size)
                 //获取数据
                 val data=ByteArray(size)
                 buffer.get(data)
