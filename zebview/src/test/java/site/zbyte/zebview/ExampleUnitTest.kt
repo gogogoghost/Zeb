@@ -1,5 +1,6 @@
 package site.zbyte.zebview
 
+import android.util.Base64
 import org.junit.Test
 
 import org.junit.Assert.*

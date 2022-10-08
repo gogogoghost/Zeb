@@ -1,6 +1,7 @@
 package site.zbyte.zebview
 
 import android.annotation.SuppressLint
+import android.util.Base64
 import android.view.View
 import android.webkit.*
 import site.zbyte.zebview.callback.Callback
@@ -65,6 +66,14 @@ class ZebView(private val src:WebView) {
         src.addJavascriptInterface(this,"zebview")
     }
 
+    private fun encodeBase64(bytes:ByteArray):String{
+        return Base64.encodeToString(bytes,Base64.NO_WRAP)
+    }
+
+    private fun decodeBase64(str:String):ByteArray{
+        return Base64.decode(str,Base64.NO_WRAP)
+    }
+
     fun shouldInterceptRequest(
         view: View,
         request: WebResourceRequest
@@ -111,16 +120,20 @@ class ZebView(private val src:WebView) {
      */
     @JavascriptInterface
     fun callBaseObject(func:String,args:String):String{
+        println(args)
+        println(decodeBase64(args).toStr())
         return if(baseJsObject.hasFunc(func)){
             try{
-                String(baseJsObject.call(func,args))
+                encodeBase64(baseJsObject.call(
+                    func,
+                    decodeBase64(args)
+                ))
             }catch (e:Exception){
                 e.printStackTrace()
-                String(encodeError(e.toString()))
+                encodeBase64(encodeError(e.toString()))
             }
         }else{
-            val msg="Function:${func} in BaseObject is not found"
-            String(encodeError(msg))
+            encodeBase64(encodeError("Function:${func} in BaseObject is not found"))
         }
     }
 
@@ -133,23 +146,19 @@ class ZebView(private val src:WebView) {
             val api=jsCallableObjectMap[id]!!
             if(api.hasFunc(func)){
                 try{
-                    val tmp=api.call(func,args)
-                    println(tmp.toStr())
-                    println("字节长度：${tmp.size}")
-                    val res=String(tmp)
-                    println("字符串长度：${res.length}")
-                    res
+                    encodeBase64(api.call(
+                        func,
+                        decodeBase64(args)
+                    ))
                 }catch (e:Exception){
                     e.printStackTrace()
-                    String(encodeError(e.toString()))
+                    encodeBase64(encodeError(e.toString()))
                 }
             }else{
-                val msg="Function:${func} in Object:${id} is not found"
-                String(encodeError(msg))
+                encodeBase64(encodeError("Function:${func} in Object:${id} is not found"))
             }
         }else{
-            val msg="Object:${id} is not found"
-            String(encodeError(msg))
+            encodeBase64(encodeError("Object:${id} is not found"))
         }
     }
 
@@ -351,8 +360,6 @@ class ZebView(private val src:WebView) {
          * 数组为：[(长度)+(body)]
          */
         private fun decodeArray(byteArray: ByteArray):Array<Any?>{
-            println(byteArray.toStr())
-            println(byteArray.size)
             val buffer=ByteBuffer.wrap(byteArray)
             val out=ArrayList<Any?>()
             while(buffer.remaining()>0){
@@ -368,12 +375,10 @@ class ZebView(private val src:WebView) {
             return out.toArray()
         }
 
-        fun call(name: String, argsString: String): ByteArray {
+        fun call(name: String, bytes: ByteArray): ByteArray {
             //js调用java方法，将js对象转为java对象
             val method = funcMap[name]!!
-            //转换参数 js调用native函数，参数一定是array
-            println(argsString.length)
-            val argsArray=decodeArray(argsString.toByteArray(Charset.forName("ASCII")))
+            val argsArray=decodeArray(bytes)
             //执行函数
             val res=method.invoke(obj, *argsArray)
             //返回参数

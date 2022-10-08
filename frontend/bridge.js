@@ -1,5 +1,5 @@
 import { num2arr, concatArr, arr2num, arr2float } from "./utils";
-import {encode,decode} from 'js-base64'
+import {Base64} from 'js-base64'
 
 // js请求native的数据类型
 const REQT = {
@@ -49,20 +49,8 @@ const objectMap = {}
 //存储待pending的promise
 const promiseMap = {}
 
-//str => bytes
-const textEncoder = {
-    encode:(str)=>{
-        console.log(str)
-        const bytes=new Uint8Array(str.length)
-        for(let i=0;i<str.length;i++){
-            bytes[i]=str.charCodeAt(i)
-        }
-        console.log(bytes)
-        return bytes
-    }
-}
-//bytes => str
-const textDecoder = new TextDecoder()
+const textEncoder=new TextEncoder()
+const textDecoder=new TextDecoder()
 
 //服务存储
 let api = {}
@@ -99,11 +87,11 @@ function encodeArg(arg) {
             )
         } else {
             //use 8 bytes
-            let buf = new Float64Array([arg])
-            return concatArr(
-                num2arr(REQT.FLOAT, 1),
-                new Uint8Array(buf.buffer),
-            )
+            let buf=new Uint8Array(9)
+            let view=new DataView(buf.buffer)
+            view.setInt8(0,REQT.FLOAT)
+            view.setFloat64(1,arg)
+            return buf
         }
     } else if (c == String) {
         return concatArr(
@@ -236,17 +224,14 @@ function createObject(name, funcList = []) {
                     return function () {
                         //调用该方法
                         const bytes = encodeArray(arguments)
-                        const args = textDecoder.decode(bytes)
+                        const args = Base64.fromUint8Array(bytes)
                         const res = window.zebview.callObject(
                             name,
                             func,
                             args
                         )
-                        console.log("字符串长度：",res.length)
-                        const bytes2=textEncoder.encode(res)
-                        console.log("字节长度："+bytes2.length)
                         return decodeArg(
-                            bytes2
+                            Base64.toUint8Array(res)
                         )
                     }
                 }
@@ -267,13 +252,13 @@ function createBaseObject(funcList = []) {
                     return function () {
                         //调用该方法
                         const bytes = encodeArray(arguments)
-                        const args = textDecoder.decode(bytes)
+                        const args = Base64.fromUint8Array(bytes)
                         const res = window.zebview.callBaseObject(
                             func,
                             args
                         )
                         return decodeArg(
-                            textEncoder.encode(res)
+                            Base64.toUint8Array(res)
                         )
                     }
                 }
