@@ -86,10 +86,11 @@ function isObjHasFunction(obj){
 
 //编码参数
 function encodeArg(arg) {
-    const c = arg.constructor
-    if (arg == null || arg == undefined) {
+    if (arg == null || arg == undefined){
         return num2arr(REQT.NULL, 1)
-    } else if (c == Number) {
+    }
+    const c = arg.constructor
+    if (c == Number) {
         if (arg % 1 == 0) {
             if(arg > 0xffffffff){
                 //use 8 bytes
