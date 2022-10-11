@@ -11,6 +11,7 @@ import site.zbyte.zebview.callback.Callback
 import site.zbyte.zebview.callback.CallbackObject
 import site.zbyte.zebview.callback.Promise
 import site.zbyte.zebview.ZebView
+import site.zbyte.zebview.toStr
 
 class MainActivity : AppCompatActivity() {
 
@@ -110,5 +111,12 @@ object TestService{
         val obj=JSONObject()
         obj.put("name","Jack")
         return obj
+    }
+
+    @JavascriptInterface
+    fun testByte(bytes:ByteArray):ByteArray{
+        println("testByte")
+        println(bytes.toStr())
+        return byteArrayOf(0x35,0x56)
     }
 }

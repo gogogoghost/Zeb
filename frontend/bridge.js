@@ -143,7 +143,7 @@ function encodeArg(arg) {
     } else if (c == Uint8Array) {
         return concatArr(
             num2arr(REQT.BYTEARRAY, 1),
-            c
+            arg
         )
     } else if (c == Array) {
         return concatArr(
