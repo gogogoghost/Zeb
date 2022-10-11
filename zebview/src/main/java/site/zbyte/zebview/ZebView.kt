@@ -131,7 +131,7 @@ class ZebView(private val src:WebView) {
                 ))
             }catch (e:Exception){
                 e.printStackTrace()
-                encodeBase64(encodeError(e.toString()))
+                encodeBase64(encodeError(e.toStr()))
             }
         }else{
             encodeBase64(encodeError("Function:${func} in BaseObject is not found"))
@@ -153,7 +153,7 @@ class ZebView(private val src:WebView) {
                     ))
                 }catch (e:Exception){
                     e.printStackTrace()
-                    encodeBase64(encodeError(e.toString()))
+                    encodeBase64(encodeError(e.toStr()))
                 }
             }else{
                 encodeBase64(encodeError("Function:${func} in Object:${id} is not found"))

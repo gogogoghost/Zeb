@@ -50,3 +50,19 @@ fun ByteArray.toStr(): String {
     }
     return sb.toString()
 }
+
+fun Exception.toStr():String{
+    var throwable:Throwable?=this
+    var msg = ""
+    while(throwable!=null){
+        if (msg.isNotEmpty()){
+            msg += " -> "
+        }
+        msg += throwable.javaClass.name
+        throwable.message?.also {
+            msg+= ":$it"
+        }
+        throwable=throwable.cause
+    }
+    return msg
+}

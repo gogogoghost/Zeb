@@ -115,6 +115,7 @@ object TestService{
 
     @JavascriptInterface
     fun testByte(bytes:ByteArray):ByteArray{
+        throw Exception("I am message")
         println("testByte")
         println(bytes.toStr())
         return byteArrayOf(0x35,0x56)
