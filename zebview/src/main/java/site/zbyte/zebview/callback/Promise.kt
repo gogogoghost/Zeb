@@ -3,6 +3,7 @@ package site.zbyte.zebview.callback
 import android.os.Handler
 import android.os.HandlerThread
 import site.zbyte.zebview.randomString
+import site.zbyte.zebview.toStr
 
 class Promise<T>: PromiseCallback<T> {
 
@@ -22,7 +23,11 @@ class Promise<T>: PromiseCallback<T> {
         //初始化handler 并且执行promise
         this.handler=handler
         handler.post{
-            processor.invoke(this)
+            try{
+                processor.invoke(this)
+            }catch (e:Exception){
+                reject(e.toStr())
+            }
         }
     }
 

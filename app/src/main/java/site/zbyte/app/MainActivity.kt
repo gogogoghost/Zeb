@@ -97,7 +97,9 @@ object TestService{
 
     private val promise= Promise<String>{
         println("working!!!!!!!!1")
-        it.reject("Promise work done")
+        throw Exception("some error")
+        println("work done")
+        it.resolve("Promise work done")
     }
 
     @JavascriptInterface
