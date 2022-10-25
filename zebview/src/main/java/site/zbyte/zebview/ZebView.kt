@@ -82,7 +82,7 @@ class ZebView(private val src:WebView) {
         request: WebResourceRequest
     ): WebResourceResponse?{
         if(request.method=="GET" &&
-            request.url.scheme=="http"&&
+            request.url.scheme=="https"&&
             request.url.host=="zv"){
             if(request.url.path=="/receive"){
                 val data=callbackQueue.take().toByteArray()

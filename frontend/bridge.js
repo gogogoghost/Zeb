@@ -379,7 +379,7 @@ function processMessage(bytes) {
  */
 async function messageLoop() {
     while (true) {
-        const res = await fetch('http://zv/receive')
+        const res = await fetch('https://zv/receive')
         const data = await res.arrayBuffer()
         processMessage(new Uint8Array(data))
     }
