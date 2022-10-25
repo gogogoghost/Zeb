@@ -12,7 +12,6 @@ import site.zbyte.zebview.callback.Response
 import java.io.ByteArrayInputStream
 import java.lang.reflect.Method
 import java.nio.ByteBuffer
-import java.nio.charset.Charset
 import java.util.concurrent.LinkedBlockingQueue
 
 @SuppressLint("SetJavaScriptEnabled")
