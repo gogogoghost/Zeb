@@ -381,7 +381,10 @@ async function messageLoop() {
     while (true) {
         const res = await fetch('https://zv/receive')
         const data = await res.arrayBuffer()
-        processMessage(new Uint8Array(data))
+        //异步解析回调数据，避免阻塞线程
+        (async()=>{
+            processMessage(new Uint8Array(data))
+        })()
     }
 }
 
