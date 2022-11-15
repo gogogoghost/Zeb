@@ -10,7 +10,8 @@ class CallbackObject(
     /**
      * 调用该对象内的方法
      */
-    fun call(funcName:String, vararg args:Any?){
+    fun call(funcName:String, vararg args:Any?):Promise<Any?>{
+        val promise = Promise<Any?>{}
         zv.appendResponse(object :Response{
             override fun toByteArray(): ByteArray {
                 return Response.REST.OBJECT_CALLBACK.v.toByteArray()+
@@ -25,7 +26,9 @@ class CallbackObject(
                         //回调内容
                         zv.encodeArray(args)
             }
-        })
+        }, promise.getId())
+        zv.savePromise(promise)
+        return promise
     }
 
 

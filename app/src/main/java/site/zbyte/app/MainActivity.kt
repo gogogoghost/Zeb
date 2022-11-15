@@ -12,6 +12,7 @@ import site.zbyte.zebview.callback.CallbackObject
 import site.zbyte.zebview.callback.Promise
 import site.zbyte.zebview.ZebView
 import site.zbyte.zebview.toStr
+import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
 
@@ -36,9 +37,6 @@ class MainActivity : AppCompatActivity() {
                 view: WebView,
                 request: WebResourceRequest
             ): WebResourceResponse? {
-                val zvRes=zv.shouldInterceptRequest(view,request)
-                if(zvRes!=null)
-                    return zvRes
                 val res=assetLoader.shouldInterceptRequest(request.url)
                 if(request.url.toString().endsWith(".js")){
                     res?.mimeType="text/javascript"
@@ -97,7 +95,6 @@ object TestService{
 
     private val promise= Promise<String>{
         println("working!!!!!!!!1")
-        throw Exception("some error")
         println("work done")
         it.resolve("Promise work done")
     }
@@ -121,5 +118,13 @@ object TestService{
         println("testByte")
         println(bytes.toStr())
         return byteArrayOf(0x35,0x56)
+    }
+
+    @JavascriptInterface
+    fun testReturnFromCallback(callback: Callback){
+        println("invoke")
+        callback.call("Jack").then {
+            println(it)
+        }
     }
 }

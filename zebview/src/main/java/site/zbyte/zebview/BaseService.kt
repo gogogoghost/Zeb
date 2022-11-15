@@ -22,6 +22,11 @@ class BaseService(private val zv:ZebView) {
         }
     }
 
+    @JavascriptInterface
+    fun finalizePromise(token:String,args:String){
+        zv.finalizeFromJs(token,args)
+    }
+
     fun onAdd(name:String,obj:Any){
         if(!obj::class.java.isAnnotationPresent(JavascriptClass::class.java))
             return

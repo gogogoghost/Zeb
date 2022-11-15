@@ -14,18 +14,21 @@ class Callback(
     /**
      * 调用该回调方法
      */
-    fun call(vararg args:Any?){
+    fun call(vararg args:Any?):Promise<Any?>{
+        val promise= Promise<Any?>{}
         zv.appendResponse(object :Response{
             override fun toByteArray():ByteArray {
                 return Response.REST.CALLBACK.v.toByteArray()+
-                            //方法标记名称
-                            functionToken.toByteArray()+
-                            //0分割内容
-                            0+
-                            //回调内容
-                            zv.encodeArray(args)
+                        //方法标记名称
+                        functionToken.toByteArray()+
+                        //0分割内容
+                        0+
+                        //回调内容
+                        zv.encodeArray(args)
             }
-        })
+        },promise.getId())
+        zv.savePromise(promise)
+        return promise
     }
 
     protected fun finalize(){

@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 export default defineConfig({
-    base:'/assets/',
+    base:'/',
     server: {
         open: false,
         port: 3000,

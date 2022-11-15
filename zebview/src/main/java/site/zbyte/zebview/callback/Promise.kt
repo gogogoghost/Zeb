@@ -26,7 +26,7 @@ class Promise<T>: PromiseCallback<T> {
             try{
                 processor.invoke(this)
             }catch (e:Exception){
-                reject(e.toStr())
+                reject(e)
             }
         }
     }
@@ -47,43 +47,49 @@ class Promise<T>: PromiseCallback<T> {
     private var thenResult:T?=null
 
     //catch回调
-    private var catchFunctionList:ArrayList<((Any?)->Unit)> = arrayListOf()
+    private var catchFunctionList:ArrayList<((Exception?)->Unit)> = arrayListOf()
 
-    private var catchResult:Any?=null
+    private var catchResult:Exception?=null
 
     //随机生成promise id
     private val id= randomString(16)
 
+    //锁
+    private val lock=Object()
+
     //Native使用的then
-    @Synchronized
     fun then(callback:(T)->Unit): Promise<T> {
-        if(state== State.Pending){
-            thenFunctionList.add(callback)
-        }else if(state== State.Resolved){
-            handler.post{
-                callback.invoke(thenResult!!)
+        synchronized(lock){
+            if(state== State.Pending){
+                thenFunctionList.add(callback)
+            }else if(state== State.Resolved){
+                handler.post{
+                    callback.invoke(thenResult!!)
+                }
             }
+            return this
         }
-        return this
     }
 
     //Native使用的catch
-    @Synchronized
-    fun catch(callback:(Any?)->Unit): Promise<T> {
-        if(state== State.Pending){
-            catchFunctionList.add(callback)
-        }else if(state== State.Rejected){
-            handler.post{
-                callback.invoke(catchResult!!)
+    fun catch(callback:(Throwable?)->Unit): Promise<T> {
+        synchronized(lock){
+            if(state== State.Pending){
+                catchFunctionList.add(callback)
+            }else if(state== State.Rejected){
+                handler.post{
+                    callback.invoke(catchResult!!)
+                }
             }
+            return this
         }
-        return this
     }
 
     //获取当前promise状态
-    @Synchronized
     fun getState(): State {
-        return state
+        synchronized(lock){
+            return state
+        }
     }
 
     //获取该promiseID
@@ -91,28 +97,45 @@ class Promise<T>: PromiseCallback<T> {
         return id
     }
 
-    @Synchronized
     override fun resolve(obj: T) {
-        if(state== State.Pending){
-            state= State.Resolved
-            thenResult=obj
-            while(thenFunctionList.size>0){
-                val item=thenFunctionList.first()
-                item.invoke(obj)
-                thenFunctionList.removeAt(0)
+        synchronized(lock){
+            if(state== State.Pending){
+                state= State.Resolved
+                thenResult=obj
+                lock.notifyAll()
+                while(thenFunctionList.size>0){
+                    val item=thenFunctionList.first()
+                    item.invoke(obj)
+                    thenFunctionList.removeAt(0)
+                }
             }
         }
     }
 
-    @Synchronized
-    override fun reject(err: Any?) {
-        if(state== State.Pending){
-            state= State.Rejected
-            catchResult=err
-            while(catchFunctionList.size>0){
-                val item=catchFunctionList.first()
-                item.invoke(err)
-                catchFunctionList.removeAt(0)
+    override fun reject(err: Exception?) {
+        synchronized(lock){
+            if(state== State.Pending){
+                state= State.Rejected
+                catchResult=err
+                lock.notifyAll()
+                while(catchFunctionList.size>0){
+                    val item=catchFunctionList.first()
+                    item.invoke(err)
+                    catchFunctionList.removeAt(0)
+                }
+            }
+        }
+    }
+
+    fun await():T{
+        synchronized(lock){
+            if(state== State.Pending){
+                lock.wait()
+            }
+            if(state== State.Resolved){
+                return thenResult!!
+            }else{
+                throw catchResult?:Exception("")
             }
         }
     }

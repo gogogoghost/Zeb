@@ -14,6 +14,7 @@ const REQT = {
     OBJECT: 11,
     BYTEARRAY: 12,
     ARRAY: 13,
+    ERROR: 15,
     JSON:16
 }
 // native响应的数据类型
@@ -154,6 +155,11 @@ function encodeArg(arg) {
         return concatArr(
             num2arr(REQT.BOOLEAN, 1),
             new Uint8Array([arg ? 1 : 0])
+        )
+    } else if (c == Error){
+        return concatArr(
+            num2arr(REQT.ERROR, 1),
+            textEncoder.encode(arg.message)
         )
     } else {
         throw new Error("Not support type to encode")
@@ -301,7 +307,7 @@ function createBaseObject(funcList = []) {
 /**
  * 处理队列下来的消息
  */
-function processMessage(bytes) {
+async function processMessage(bytes,resCallback) {
     const t = bytes[0]
     const body = bytes.slice(1)
     switch (t) {
@@ -317,7 +323,8 @@ function processMessage(bytes) {
                 if (func) {
                     const argsRaw = body.slice(i + 1)
                     const args = decodeArray(argsRaw)
-                    func.apply(func, args)
+                    const res=await func.apply(func, args)
+                    resCallback(res)
                 }
             }
             break
@@ -334,7 +341,8 @@ function processMessage(bytes) {
                     if(func){
                         const argsRaw=body.slice(i2+1)
                         const args=decodeArray(argsRaw)
-                        func.apply(func,args)
+                        const res = await func.apply(func,args)
+                        resCallback(res)
                     }
                 }
             }
@@ -374,22 +382,11 @@ function processMessage(bytes) {
     }
 }
 
-/**
- * 消息循环
- */
-async function messageLoop() {
-    while (true) {
-        const res = await fetch('https://zv/receive')
-        const data = await res.arrayBuffer()
-        //异步解析回调数据，避免阻塞线程
-        (async()=>{
-            processMessage(new Uint8Array(data))
-        })()
-    }
-}
-
 if (window.zebview) {
-    const baseApi = createBaseObject(["registerServiceWatcher"], true)
+    const baseApi = createBaseObject([
+        "registerServiceWatcher",
+        "finalizePromise"
+    ], true)
     const objList = baseApi.registerServiceWatcher((name, obj) => {
         apiInternal[name] = obj
     })
@@ -398,9 +395,31 @@ if (window.zebview) {
         const obj = objList[i]
         apiInternal[name] = obj
     }
-    // 启动消息循环 接收消息
-    messageLoop()
     api=apiInternal
+
+    // 初始化回调接受器
+    // 由于native并不能正确的等待promise 所以需要手动实现回调
+    window.zvReceive=async function(str,promiseId){
+        const data=Base64.toUint8Array(str)
+        let resValue=null
+        try{
+            await processMessage(
+                new Uint8Array(data),
+                (res)=>{
+                    resValue=res
+                }
+            )
+        }catch(e){
+            console.warn(e)
+            resValue=e
+        }
+        if(promiseId){
+            baseApi.finalizePromise(
+                promiseId,
+                Base64.fromUint8Array(encodeArg(resValue))
+            )
+        }
+    }
 }
 
 export {

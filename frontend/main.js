@@ -22,13 +22,18 @@ import {api} from './bridge'
 // console.log(res)
 
 
-
+console.log("start!")
 api.TestService.manyWork().then((res)=>{
     console.log("resolve",res)
 }).catch((err)=>{
     console.log("reject",err)
 })
 
-// console.log(api.TestService.jsonTest({
-//     "age":99
-// }))
+console.log(api.TestService.jsonTest({
+    "age":99
+}))
+
+api.TestService.testReturnFromCallback((name)=>{
+    throw Error("Some custom error")
+    return "my name is:"+name
+})

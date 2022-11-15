@@ -1,6 +1,8 @@
 package site.zbyte.zebview
 
 import android.annotation.SuppressLint
+import android.os.Handler
+import android.os.Looper
 import android.util.Base64
 import android.view.View
 import android.webkit.*
@@ -17,6 +19,8 @@ import java.util.concurrent.LinkedBlockingQueue
 @SuppressLint("SetJavaScriptEnabled")
 class ZebView(private val src:WebView) {
 
+    private val handler = Handler(Looper.getMainLooper())
+
     /**
      * JS->Native 标志
      */
@@ -32,6 +36,7 @@ class ZebView(private val src:WebView) {
         OBJECT(11),
         BYTEARRAY(12),
         ARRAY(13),
+        ERROR(15),
         JSON(16)
     }
     /**
@@ -57,11 +62,14 @@ class ZebView(private val src:WebView) {
 //    普通的js可调用对象
     private val jsCallableObjectMap=HashMap<String,JsCallableObject>()
 //    回调队列
-    private val callbackQueue=LinkedBlockingQueue<Response>()
+//    private val callbackQueue=LinkedBlockingQueue<Response>()
 
     //_base对象
     private val baseService=BaseService(this)
     private val baseJsObject=JsCallableObject(baseService)
+
+//    native侧的promise存储
+    private val promiseMap=HashMap<String,Promise<Any?>>()
 
     init {
         src.settings.javaScriptEnabled=true
@@ -76,23 +84,23 @@ class ZebView(private val src:WebView) {
         return Base64.decode(str,Base64.NO_WRAP)
     }
 
-    fun shouldInterceptRequest(
-        view: View,
-        request: WebResourceRequest
-    ): WebResourceResponse?{
-        if(request.method=="GET" &&
-            request.url.scheme=="https"&&
-            request.url.host=="zv"){
-            if(request.url.path=="/receive"){
-                val data=callbackQueue.take().toByteArray()
-                val input=ByteArrayInputStream(data)
-                return WebResourceResponse(null,null,200,"OK", hashMapOf(
-                    "Access-Control-Allow-Origin" to "*"
-                ),input)
-            }
-        }
-        return null
-    }
+//    fun shouldInterceptRequest(
+//        view: View,
+//        request: WebResourceRequest
+//    ): WebResourceResponse?{
+//        if(request.method=="GET" &&
+//            request.url.scheme=="https"&&
+//            request.url.host=="zv"){
+//            if(request.url.path=="/receive"){
+//                val data=callbackQueue.take().toByteArray()
+//                val input=ByteArrayInputStream(data)
+//                return WebResourceResponse(null,null,200,"OK", hashMapOf(
+//                    "Access-Control-Allow-Origin" to "*"
+//                ),input)
+//            }
+//        }
+//        return null
+//    }
 
     //添加一个 命名对象供js调用
     fun addJsObject(name:String, obj:Any): ZebView {
@@ -112,9 +120,9 @@ class ZebView(private val src:WebView) {
      * 构造错误
      */
     @JavascriptInterface
-    fun encodeError(msg:String):ByteArray{
+    fun encodeError(err:Exception):ByteArray{
         return byteArrayOf(REST.ERROR.v)+
-                msg.toByteArray()
+                err.toStr().toByteArray()
     }
 
     /**
@@ -130,10 +138,10 @@ class ZebView(private val src:WebView) {
                 ))
             }catch (e:Exception){
                 e.printStackTrace()
-                encodeBase64(encodeError(e.toStr()))
+                encodeBase64(encodeError(e))
             }
         }else{
-            encodeBase64(encodeError("Function:${func} in BaseObject is not found"))
+            encodeBase64(encodeError(Exception("Function:${func} in BaseObject is not found")))
         }
     }
 
@@ -152,13 +160,13 @@ class ZebView(private val src:WebView) {
                     ))
                 }catch (e:Exception){
                     e.printStackTrace()
-                    encodeBase64(encodeError(e.toStr()))
+                    encodeBase64(encodeError(e))
                 }
             }else{
-                encodeBase64(encodeError("Function:${func} in Object:${id} is not found"))
+                encodeBase64(encodeError(Exception("Function:${func} in Object:${id} is not found")))
             }
         }else{
-            encodeBase64(encodeError("Object:${id} is not found"))
+            encodeBase64(encodeError(Exception("Object:${id} is not found")))
         }
     }
 
@@ -171,10 +179,37 @@ class ZebView(private val src:WebView) {
     }
 
     /**
-     * 给回调队列里增加一个响应
+     * 调用js代码并且获取回调
      */
-    fun appendResponse(res:Response){
-        callbackQueue.put(res)
+    fun appendResponse(res:Response,promiseId:String?=null){
+        handler.post{
+            val str=Base64.encodeToString(res.toByteArray(),Base64.NO_WRAP)
+            if(promiseId==null){
+                src.evaluateJavascript("window.zvReceive('${str}')",null)
+            }else{
+                src.evaluateJavascript("window.zvReceive('${str}','${promiseId}')",null)
+            }
+        }
+    }
+
+    fun savePromise(promise: Promise<Any?>){
+        promiseMap[promise.getId()]=promise
+    }
+
+    /**
+     * js测完成回调后将数据响应
+     */
+    fun finalizeFromJs(token:String,args:String){
+        promiseMap[token]?.run {
+            val bytes=decodeBase64(args)
+            val res = decodeArg(bytes)
+            if(res is Exception){
+                reject(res)
+            }else{
+                resolve(res)
+            }
+            promiseMap.remove(token)
+        }
     }
 
     /**
@@ -286,6 +321,90 @@ class ZebView(private val src:WebView) {
     }
 
     /**
+     * 解码对象
+     * 输入：(类型)+(原始数据)
+     * 输出：对象
+     */
+    private fun decodeArg(byteArray: ByteArray):Any?{
+        val type=byteArray[0]
+        val body=byteArray.sliceArray(1 until byteArray.size)
+        when(type){
+            REQT.FUNCTION.v->{
+                //方法回调
+                val token=String(body)
+                return Callback(this@ZebView,token)
+            }
+            REQT.OBJECT.v->{
+                //带有回调的对象
+                val token=String(body)
+                return CallbackObject(this@ZebView,token)
+            }
+            REQT.BYTEARRAY.v->{
+                //字节数组
+                return body
+            }
+            REQT.ARRAY.v->{
+                //数组
+                return decodeArray(body)
+            }
+            REQT.INT.v->{
+                return when(body.size){
+                    8->{
+                        ByteBuffer.wrap(body).long
+                    }
+                    4->{
+                        ByteBuffer.wrap(body).int
+                    }
+                    else->{
+                        throw Exception("Not valid integer bytes size:${body.size}")
+                    }
+                }
+            }
+            REQT.FLOAT.v->{
+                return ByteBuffer.wrap(body).double
+            }
+            REQT.STRING.v->{
+                return String(body)
+            }
+            REQT.NULL.v->{
+                return null
+            }
+            REQT.BOOLEAN.v->{
+                return body[0]==0x01.toByte()
+            }
+            REQT.JSON.v->{
+                return JSONObject(String(body))
+            }
+            REQT.ERROR.v->{
+                return Exception(String(body))
+            }
+            else->{
+                //其他情况 非法
+                throw Exception("Not support type to decode")
+            }
+        }
+    }
+
+    /**
+     * 解码数组
+     * 数组为：[(长度)+(body)]
+     */
+    private fun decodeArray(byteArray: ByteArray):Array<Any?>{
+        val buffer=ByteBuffer.wrap(byteArray)
+        val out=ArrayList<Any?>()
+        while(buffer.remaining()>0){
+            //获取长度
+            val size=buffer.int
+            //获取数据
+            val data=ByteArray(size)
+            buffer.get(data)
+            //解析数据
+            out.add(decodeArg(data))
+        }
+        return out.toArray()
+    }
+
+    /**
      * Service class
      */
     private inner class JsCallableObject(private val obj: Any) {
@@ -308,87 +427,6 @@ class ZebView(private val src:WebView) {
 
         fun hasFunc(name: String): Boolean {
             return funcMap.containsKey(name)
-        }
-
-        /**
-         * 解码对象
-         * 输入：(类型)+(原始数据)
-         * 输出：对象
-         */
-        private fun decodeArg(byteArray: ByteArray):Any?{
-            val type=byteArray[0]
-            val body=byteArray.sliceArray(1 until byteArray.size)
-            when(type){
-                REQT.FUNCTION.v->{
-                    //方法回调
-                    val token=String(body)
-                    return Callback(this@ZebView,token)
-                }
-                REQT.OBJECT.v->{
-                    //带有回调的对象
-                    val token=String(body)
-                    return CallbackObject(this@ZebView,token)
-                }
-                REQT.BYTEARRAY.v->{
-                    //字节数组
-                    return body
-                }
-                REQT.ARRAY.v->{
-                    //数组
-                    return decodeArray(body)
-                }
-                REQT.INT.v->{
-                    return when(body.size){
-                        8->{
-                            ByteBuffer.wrap(body).long
-                        }
-                        4->{
-                            ByteBuffer.wrap(body).int
-                        }
-                        else->{
-                            throw Exception("Not valid integer bytes size:${body.size}")
-                        }
-                    }
-                }
-                REQT.FLOAT.v->{
-                    return ByteBuffer.wrap(body).double
-                }
-                REQT.STRING.v->{
-                    return String(body)
-                }
-                REQT.NULL.v->{
-                    return null
-                }
-                REQT.BOOLEAN.v->{
-                    return body[0]==0x01.toByte()
-                }
-                REQT.JSON.v->{
-                    return JSONObject(String(body))
-                }
-                else->{
-                    //其他情况 非法
-                    throw Exception("Not support type to decode")
-                }
-            }
-        }
-
-        /**
-         * 解码数组
-         * 数组为：[(长度)+(body)]
-         */
-        private fun decodeArray(byteArray: ByteArray):Array<Any?>{
-            val buffer=ByteBuffer.wrap(byteArray)
-            val out=ArrayList<Any?>()
-            while(buffer.remaining()>0){
-                //获取长度
-                val size=buffer.int
-                //获取数据
-                val data=ByteArray(size)
-                buffer.get(data)
-                //解析数据
-                out.add(decodeArg(data))
-            }
-            return out.toArray()
         }
 
         fun call(name: String, bytes: ByteArray): ByteArray {
