@@ -28,12 +28,19 @@ Call service
 //Import
 //If not in a ZebView's environmnet, api will be null
 import {api} from 'zebview-bridge'
+
 //Call native api
 const res=api.TestService.test(789,"string",false)
+
 //Support promise
 api.TestService.manyWork().then(()=>{
     //promise resolve
 }).catch(()=>{
     //promise reject
+})
+
+//Support return in callback
+api.TestService.notifyJs((name)=>{
+    return "my name is "+name
 })
 ```

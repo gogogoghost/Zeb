@@ -127,6 +127,10 @@ class Promise<T>: PromiseCallback<T> {
         }
     }
 
+    /**
+     * 在当前线程等待结果返回，请注意不要在js回调线程中等待，会阻塞线程
+     * js层抛出的异常在await时会在native层抛出
+     */
     fun await():T{
         synchronized(lock){
             if(state== State.Pending){

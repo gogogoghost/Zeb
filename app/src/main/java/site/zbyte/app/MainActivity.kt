@@ -122,9 +122,8 @@ object TestService{
 
     @JavascriptInterface
     fun testReturnFromCallback(callback: Callback){
-        println("invoke")
-        callback.call("Jack").then {
-            println(it)
-        }
+        callback.call("one")
+        callback.call("two")
+        callback.call("three")
     }
 }

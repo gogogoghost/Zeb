@@ -33,7 +33,11 @@ console.log(api.TestService.jsonTest({
     "age":99
 }))
 
+let hasTrow=false
 api.TestService.testReturnFromCallback((name)=>{
-    throw Error("Some custom error")
-    return "my name is:"+name
+    console.log(name)
+    if(!hasTrow){
+        hasTrow=true
+        throw new Error("custom error")
+    }
 })

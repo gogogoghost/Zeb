@@ -32,12 +32,24 @@ Create ZebView in layout xml file or by java code(kotlin)
 //Make a service
 @JavascriptClass
 object TestServiceObject{
+
+    /**
+     * in js:
+     * api.TestService.test(100,"Hello World",false)
+     */
     @JavascriptInterface
     fun test(intVal:Int,strVal:String,boolVal:Boolean){
         //This function invoke by js and can return something
         //See [Support Params Type] behind
     }
-    
+
+    /**
+     * in js:
+     * api.TestService.manyWork().then((res)=>{
+     *      //print "result"
+     *      console.log(res)
+     * })
+     */
     @JavascriptInterface
     fun manyWork():Promise<String>{
         return Promise<String>{
@@ -45,21 +57,25 @@ object TestServiceObject{
             it.resolve("result")
         }
     }
+
+    /**
+     * in js:
+     * api.TestService.notifyJs((name)=>{
+     *      return "my name is "+name
+     * })
+     */
+    @JavascriptInterface
+    fun notifyJs(callback:Callback){
+        callback.call("Jack").then{it->
+            //print "my name is Jack"
+            println(it)
+        }
+    }
 }
 
 //Create ZebView
 val webView=new WebView(context)
 val zv=ZebView(webView)
-
-//set webViewClient
-webView.webViewClient= object :WebViewClient(){
-    override fun shouldInterceptRequest(
-        view: WebView,
-        request: WebResourceRequest
-    ): WebResourceResponse? {
-        return zv.shouldInterceptRequest(view,request)
-    }
-}
 
 //Add Service
 zv.addJsObject("TestService",TestServiceObject)
