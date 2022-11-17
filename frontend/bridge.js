@@ -162,7 +162,7 @@ function encodeArg(arg) {
             textEncoder.encode(arg.message)
         )
     } else {
-        throw new Error("Not support type to encode")
+        throw new Error("Not support type to encode:"+arg)
     }
 }
 
@@ -226,7 +226,7 @@ function decodeArg(bytes) {
         case REST.JSON:
             return JSON.parse(textDecoder.decode(body))
         default:
-            throw new Error("Not support type to decode")
+            throw new Error("Not support type to decode:"+t)
     }
 }
 

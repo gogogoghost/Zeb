@@ -299,7 +299,7 @@ class ZebView(private val src:WebView) {
                             //方法名称
                             jsObject.funcList().joinToString(",").toByteArray()
                 }else{
-                    throw Exception("Not support type to encode")
+                    throw Exception("Not support type to encode：$arg")
                 }
             }
         }
@@ -380,7 +380,7 @@ class ZebView(private val src:WebView) {
             }
             else->{
                 //其他情况 非法
-                throw Exception("Not support type to decode")
+                throw Exception("Not support type to decode:$type")
             }
         }
     }
