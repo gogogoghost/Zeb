@@ -26,7 +26,8 @@ console.log("start!")
 api.TestService.manyWork().then((res)=>{
     console.log("resolve",res)
 }).catch((err)=>{
-    console.log("reject",err)
+    console.log("reject")
+    console.error(err)
 })
 
 console.log(api.TestService.jsonTest({
@@ -38,6 +39,6 @@ api.TestService.testReturnFromCallback((name)=>{
     console.log(name)
     if(!hasTrow){
         hasTrow=true
-        throw new Error("custom error")
+        throw new Error("custom error",{cause:new Error("source error")})
     }
 })

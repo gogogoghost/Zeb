@@ -268,7 +268,7 @@ class ZebView(private val src:WebView) {
                                     0+
                                     //reject符号
                                     0+
-                                    encodeArg(it?.message)
+                                    encodeArg(it?.toStr())
                         }
                     })
                 }

@@ -72,7 +72,7 @@ class Promise<T>: PromiseCallback<T> {
     }
 
     //Native使用的catch
-    fun catch(callback:(Throwable?)->Unit): Promise<T> {
+    fun catch(callback:(Exception?)->Unit): Promise<T> {
         synchronized(lock){
             if(state== State.Pending){
                 catchFunctionList.add(callback)

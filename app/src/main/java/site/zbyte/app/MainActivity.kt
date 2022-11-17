@@ -96,7 +96,9 @@ object TestService{
     private val promise= Promise<String>{
         println("working!!!!!!!!1")
         println("work done")
-        it.resolve("Promise work done")
+//        it.resolve("Promise work done")
+//        throw Exception("custom exception by throw")
+        it.reject(Exception("custom exception"))
     }
 
     @JavascriptInterface
@@ -122,7 +124,9 @@ object TestService{
 
     @JavascriptInterface
     fun testReturnFromCallback(callback: Callback){
-        callback.call("one")
+        callback.call("one").catch {
+            it?.printStackTrace()
+        }
         callback.call("two")
         callback.call("three")
     }

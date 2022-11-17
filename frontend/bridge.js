@@ -61,7 +61,32 @@ let apiInternal = {}
 // 没有获取到zebview 默认导出null
 let api = null
 
+// Native error prefix
+const naviveErrorPrefix = "Native exception:"
+
+// 扩展error方法
+// chrome>=93 支持cause
+Error.prototype.toStr=function(){
+    let msg=""
+    let cause=this
+    while(cause){
+        if(msg){
+            msg += " -> "
+        }
+        // 非error类型，转成字符串
+        if(cause.constructor!=Error){
+            msg += JSON.stringify(cause)
+            break
+        }
+        msg+=cause.name+":"+cause.message
+        cause=cause.cause
+    }
+    console.log(msg)
+    return msg
+}
+
 // 内存释放注册器
+// chrome >= 84
 const register=new FinalizationRegistry((token)=>{
     window.zebview.releaseObject(token)
 })
@@ -159,7 +184,7 @@ function encodeArg(arg) {
     } else if (c == Error){
         return concatArr(
             num2arr(REQT.ERROR, 1),
-            textEncoder.encode(arg.message)
+            textEncoder.encode(arg.toStr())
         )
     } else {
         throw new Error("Not support type to encode:"+arg)
@@ -187,7 +212,7 @@ function decodeArg(bytes) {
     const body = bytes.slice(1)
     switch (t) {
         case REST.ERROR:
-            throw new Error("Native exception:"+textDecoder.decode(body))
+            throw new Error(naviveErrorPrefix+textDecoder.decode(body))
         case REST.NULL:
             return null
         case REST.STRING:
@@ -373,7 +398,7 @@ async function processMessage(bytes,resCallback) {
                     if(success){
                         promise.resolve(arg)
                     }else{
-                        promise.reject(arg)
+                        promise.reject(new Error(naviveErrorPrefix+arg))
                     }
                     delete promiseMap[name]
                 }
