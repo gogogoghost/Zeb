@@ -25,23 +25,25 @@ console.log("run")
 // console.log(res)
 
 
-console.log("start!")
-api.TestService.manyWork().then((res)=>{
-    console.log("resolve",res)
-}).catch((err)=>{
-    console.log("reject")
-    console.error(err)
-})
+// console.log("start!")
+// api.TestService.manyWork().then((res)=>{
+//     console.log("resolve",res)
+// }).catch((err)=>{
+//     console.log("reject")
+//     console.error(err)
+// })
 
-console.log(api.TestService.jsonTest({
-    "age":99
-}))
+// console.log(api.TestService.jsonTest({
+//     "age":99
+// }))
 
-let hasTrow=false
-api.TestService.testReturnFromCallback((name)=>{
-    console.log("testReturnFromCallback",name)
-    if(!hasTrow){
-        hasTrow=true
-        throw new Error("custom error",{cause:new Error("source error")})
-    }
-})
+// let hasTrow=false
+// api.TestService.testReturnFromCallback((name)=>{
+//     console.log("testReturnFromCallback",name)
+//     if(!hasTrow){
+//         hasTrow=true
+//         throw new Error("custom error",{cause:new Error("source error")})
+//     }
+// })
+
+api.TestService.testNull(null)

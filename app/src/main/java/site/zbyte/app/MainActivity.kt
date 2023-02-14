@@ -93,16 +93,17 @@ object TestService{
         return 10.24
     }
 
-    private val promise= Promise<String>{
+    private val promise= Promise<String?>{
         println("working!!!!!!!!1")
         println("work done")
+        it.resolve(null)
 //        it.resolve("Promise work done")
 //        throw Exception("custom exception by throw")
-        it.reject(Exception("custom exception"))
+//        it.reject(Exception("custom exception"))
     }
 
     @JavascriptInterface
-    fun manyWork(): Promise<String> {
+    fun manyWork(): Promise<String?> {
         return promise
     }
 
@@ -129,5 +130,10 @@ object TestService{
         }
         callback.call("two")
         callback.call("three")
+    }
+
+    @JavascriptInterface
+    fun testNull(str:String?){
+        println("testNull:$str")
     }
 }

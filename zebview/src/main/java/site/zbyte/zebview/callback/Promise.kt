@@ -5,7 +5,7 @@ import android.os.HandlerThread
 import site.zbyte.zebview.randomString
 import site.zbyte.zebview.toStr
 
-class Promise<T>: PromiseCallback<T> {
+class Promise<T>: PromiseCallback<T?> {
 
     companion object{
         //默认handler
@@ -17,9 +17,9 @@ class Promise<T>: PromiseCallback<T> {
 
     private val handler:Handler
 
-    constructor(processor:(PromiseCallback<T>)->Unit):this(processor, promiseHandler)
+    constructor(processor:(PromiseCallback<T?>)->Unit):this(processor, promiseHandler)
 
-    constructor(processor:(PromiseCallback<T>)->Unit, handler:Handler) {
+    constructor(processor:(PromiseCallback<T?>)->Unit, handler:Handler) {
         //初始化handler 并且执行promise
         this.handler=handler
         handler.post{
@@ -42,7 +42,7 @@ class Promise<T>: PromiseCallback<T> {
     private var state: State = State.Pending
 
     //then回调
-    private var thenFunctionList:ArrayList<((T)->Unit)> = arrayListOf()
+    private var thenFunctionList:ArrayList<((T?)->Unit)> = arrayListOf()
 
     private var thenResult:T?=null
 
@@ -58,13 +58,13 @@ class Promise<T>: PromiseCallback<T> {
     private val lock=Object()
 
     //Native使用的then
-    fun then(callback:(T)->Unit): Promise<T> {
+    fun then(callback:(T?)->Unit): Promise<T> {
         synchronized(lock){
             if(state== State.Pending){
                 thenFunctionList.add(callback)
             }else if(state== State.Resolved){
                 handler.post{
-                    callback.invoke(thenResult!!)
+                    callback.invoke(thenResult)
                 }
             }
             return this
@@ -97,7 +97,7 @@ class Promise<T>: PromiseCallback<T> {
         return id
     }
 
-    override fun resolve(obj: T) {
+    override fun resolve(obj: T?) {
         synchronized(lock){
             if(state== State.Pending){
                 state= State.Resolved
