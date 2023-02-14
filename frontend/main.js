@@ -1,6 +1,9 @@
+
+console.log("before")
+
 import {api} from './bridge'
 
-
+console.log("run")
 // const res=api.TestService.testByte(new Uint8Array([10,20,30,40,50,60]))
 // console.log(res)
 // const res=api.TestService.test(
@@ -36,7 +39,7 @@ console.log(api.TestService.jsonTest({
 
 let hasTrow=false
 api.TestService.testReturnFromCallback((name)=>{
-    console.log(name)
+    console.log("testReturnFromCallback",name)
     if(!hasTrow){
         hasTrow=true
         throw new Error("custom error",{cause:new Error("source error")})

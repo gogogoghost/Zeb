@@ -87,9 +87,14 @@ Error.prototype.toStr=function(){
 
 // 内存释放注册器
 // chrome >= 84
-const register=new FinalizationRegistry((token)=>{
-    window.zebview.releaseObject(token)
-})
+let register=null
+if(window.FinalizationRegistry){
+    register=new FinalizationRegistry((token)=>{
+        window.zebview.releaseObject(token)
+    })
+}else{
+    console.warn("No support FinalizationRegistry. Js object receive from native will not auto release.")
+}
 
 //生成随机字符串
 function randomString(e) {
@@ -232,7 +237,9 @@ function decodeArg(bytes) {
             const funcList = funcListStr.split(',')
             const obj = createObject(token, funcList)
             //当对象不使用的时候 通知native回收内存
-            register.register(obj,token)
+            if(register){
+                register.register(obj,token)
+            }
             return obj
         case REST.BYTEARRAY:
             return body
