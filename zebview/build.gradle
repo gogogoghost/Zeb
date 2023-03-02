@@ -16,7 +16,13 @@ android {
     }
 
     buildTypes {
+
+        def ZV_VERSION="\"0.5.5\""
+        debug{
+            buildConfigField "String", "ZV_VERSION", "$ZV_VERSION"
+        }
         release {
+            buildConfigField "String", "ZV_VERSION", "$ZV_VERSION"
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

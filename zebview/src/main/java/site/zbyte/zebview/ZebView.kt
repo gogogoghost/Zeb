@@ -117,6 +117,14 @@ class ZebView(private val src:WebView) {
     }
 
     /**
+     * 获取版本
+     */
+    @JavascriptInterface
+    fun getVersion():String{
+        return BuildConfig.ZV_VERSION
+    }
+
+    /**
      * 构造错误
      */
     @JavascriptInterface
