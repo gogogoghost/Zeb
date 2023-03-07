@@ -6,13 +6,12 @@ import android.webkit.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
-import site.zbyte.zebview.JavascriptClass
 import site.zbyte.zebview.callback.Callback
 import site.zbyte.zebview.callback.CallbackObject
 import site.zbyte.zebview.callback.Promise
 import site.zbyte.zebview.ZebView
+import site.zbyte.zebview.data.AcrossObject
 import site.zbyte.zebview.toStr
-import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
 
@@ -26,7 +25,7 @@ class MainActivity : AppCompatActivity() {
         val src=findViewById<WebView>(R.id.zv)
         val zv=ZebView(src)
 
-        zv.addJsObject("TestService", TestService)
+        zv.addJsObject("TestService", AcrossObject(TestService(),true))
 
         val assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
@@ -54,7 +53,6 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
-@JavascriptClass
 object WorkObject{
     @JavascriptInterface
     fun work():String{
@@ -63,8 +61,9 @@ object WorkObject{
     }
 }
 
-@JavascriptClass
-object TestService{
+class TestService{
+
+    var age=10
 
     @JavascriptInterface
     fun getWorker():WorkObject{
@@ -135,5 +134,6 @@ object TestService{
     @JavascriptInterface
     fun testNull(str:String?){
         println("testNull:$str")
+        age++
     }
 }

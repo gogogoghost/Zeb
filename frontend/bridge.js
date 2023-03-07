@@ -81,7 +81,6 @@ Error.prototype.toStr=function(){
         msg+=cause.name+":"+cause.message
         cause=cause.cause
     }
-    console.log(msg)
     return msg
 }
 
@@ -227,15 +226,18 @@ function decodeArg(bytes) {
         case REST.FLOAT:
             return arr2float(body)
         case REST.OBJECT:
-            const zeroIndex = body.indexOf(0)
+            //16字节长的id
             const token = textDecoder.decode(
-                body.slice(0, zeroIndex)
+                body.slice(0, 16)
             )
-            const funcListStr = textDecoder.decode(
-                body.slice(zeroIndex + 1)
-            )
-            const funcList = funcListStr.split(',')
-            const obj = createObject(token, funcList)
+            const index=body.indexOf(0,16)
+            const fieldArr = body.slice(16,index)
+            const methodArr = body.slice(index+1,body.length)
+
+            const fieldList = textDecoder.decode(fieldArr).split(',')
+            const funcList = textDecoder.decode(methodArr).split(',')
+        
+            const obj = createObject(token, fieldList, funcList)
             //当对象不使用的时候 通知native回收内存
             if(register){
                 register.register(obj,token)
@@ -284,51 +286,40 @@ function decodeArray(bytes) {
 /**
  * 创建一个proxy代理的api
  */
-function createObject(name, funcList = []) {
-    return new Proxy({}, {
-        get(_, key) {
-            for (const func of funcList) {
-                if (func === key) {
-                    return function () {
-                        //调用该方法
-                        const bytes = encodeArray(arguments)
-                        const args = Base64.fromUint8Array(bytes)
-                        const res = window.zebview.callObject(
-                            name,
-                            func,
-                            args
-                        )
-                        return decodeArg(
-                            Base64.toUint8Array(res)
-                        )
-                    }
-                }
-            }
-            return undefined
+function createObject(token,fieldList = [], funcList = []) {
+    let src={}
+    fieldList.forEach((name)=>{
+        src[name]=null
+    })
+    funcList.forEach((name)=>{
+        src[name]=function(){
+            //调用该方法
+            const bytes = encodeArray(arguments)
+            const args = Base64.fromUint8Array(bytes)
+            const res = window.zebview.callObject(
+                token,
+                name,
+                args
+            )
+            return decodeArg(
+                Base64.toUint8Array(res)
+            )
         }
     })
-}
-
-/**
- * 创建baseObject
- */
-function createBaseObject(funcList = []) {
-    return new Proxy({}, {
+    return new Proxy(src, {
         get(_, key) {
             for (const func of funcList) {
                 if (func === key) {
-                    return function () {
-                        //调用该方法
-                        const bytes = encodeArray(arguments)
-                        const args = Base64.fromUint8Array(bytes)
-                        const res = window.zebview.callBaseObject(
-                            func,
-                            args
-                        )
-                        return decodeArg(
-                            Base64.toUint8Array(res)
-                        )
-                    }
+                    return src[key]
+                }
+            }
+            for (const field of fieldList){
+                if (field === key){
+                    const res = window.zebview.readObject(
+                        token,
+                        key
+                    )
+                    return decodeArg(Base64.toUint8Array(res))
                 }
             }
             return undefined
@@ -415,7 +406,7 @@ async function processMessage(bytes,resCallback) {
 }
 
 if (window.zebview) {
-    const baseApi = createBaseObject([
+    const baseApi = createObject(null,[],[
         "registerServiceWatcher",
         "finalizePromise"
     ], true)
@@ -453,6 +444,8 @@ if (window.zebview) {
         }
     }
 }
+
+window.api=api
 
 export {
     api

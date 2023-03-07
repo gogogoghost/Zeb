@@ -4,17 +4,14 @@ import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
-import android.view.View
 import android.webkit.*
 import org.json.JSONObject
 import site.zbyte.zebview.callback.Callback
 import site.zbyte.zebview.callback.CallbackObject
 import site.zbyte.zebview.callback.Promise
 import site.zbyte.zebview.callback.Response
-import java.io.ByteArrayInputStream
-import java.lang.reflect.Method
+import site.zbyte.zebview.data.AcrossObject
 import java.nio.ByteBuffer
-import java.util.concurrent.LinkedBlockingQueue
 
 @SuppressLint("SetJavaScriptEnabled")
 class ZebView(private val src:WebView) {
@@ -60,13 +57,11 @@ class ZebView(private val src:WebView) {
     }
 
 //    普通的js可调用对象
-    private val jsCallableObjectMap=HashMap<String,JsCallableObject>()
-//    回调队列
-//    private val callbackQueue=LinkedBlockingQueue<Response>()
+    private val acrossObj=HashMap<String,AcrossObject>()
 
     //_base对象
     private val baseService=BaseService(this)
-    private val baseJsObject=JsCallableObject(baseService)
+    private val baseJsObject=AcrossObject(baseService)
 
 //    native侧的promise存储
     private val promiseMap=HashMap<String,Promise<Any?>>()
@@ -84,37 +79,19 @@ class ZebView(private val src:WebView) {
         return Base64.decode(str,Base64.NO_WRAP)
     }
 
-//    fun shouldInterceptRequest(
-//        view: View,
-//        request: WebResourceRequest
-//    ): WebResourceResponse?{
-//        if(request.method=="GET" &&
-//            request.url.scheme=="https"&&
-//            request.url.host=="zv"){
-//            if(request.url.path=="/receive"){
-//                val data=callbackQueue.take().toByteArray()
-//                val input=ByteArrayInputStream(data)
-//                return WebResourceResponse(null,null,200,"OK", hashMapOf(
-//                    "Access-Control-Allow-Origin" to "*"
-//                ),input)
-//            }
-//        }
-//        return null
-//    }
-
     //添加一个 命名对象供js调用
-    fun addJsObject(name:String, obj:Any): ZebView {
-        //直接把他发送会JS,解析参数时，会自动生成匿名jsObject
+    fun addJsObject(name:String, obj: AcrossObject): ZebView {
+        //发送给js
         baseService.onAdd(name,obj)
         return this
     }
 
     //添加一个 匿名对象供js调用
-    private fun addJsObjectInterval(id:String,obj:Any):JsCallableObject{
-        return JsCallableObject(obj).also {
-            jsCallableObjectMap[id]=it
-        }
-    }
+//    private fun addJsObjectInternal(id:String,obj:Any):JsCallableObject{
+//        return JsCallableObject(obj).also {
+//            jsCallableObjectMap[id]=it
+//        }
+//    }
 
     /**
      * 获取版本
@@ -134,47 +111,48 @@ class ZebView(private val src:WebView) {
     }
 
     /**
-     * 调用基础base对象
+     * 调用对象，id为null则为调用baseObject
      */
     @JavascriptInterface
-    fun callBaseObject(func:String,args:String):String{
-        return if(baseJsObject.hasFunc(func)){
-            try{
-                encodeBase64(baseJsObject.call(
-                    func,
-                    decodeBase64(args)
-                ))
-            }catch (e:Exception){
-                e.printStackTrace()
-                encodeBase64(encodeError(e))
-            }
+    fun callObject(id:String?,func:String,args:String):String{
+        return if(id==null){
+            callObjectInternal(baseJsObject,func, args)
+        }else if(acrossObj.containsKey(id)){
+            callObjectInternal(acrossObj[id]!!,func, args)
         }else{
-            encodeBase64(encodeError(Exception("Function:${func} in BaseObject is not found")))
+            encodeBase64(encodeError(Exception("Object:${id} is not found")))
         }
     }
 
-    /**
-     * 调用匿名对象
-     */
+    private fun callObjectInternal(obj:AcrossObject,func:String,args:String):String{
+        return try{
+            encodeBase64(encodeArg(obj.callMethod(
+                func,
+                decodeArray(decodeBase64(args))
+            )))
+        }catch (e:Exception){
+            e.printStackTrace()
+            encodeBase64(encodeError(e))
+        }
+    }
+
     @JavascriptInterface
-    fun callObject(id:String,func:String,args:String):String{
-        return if(jsCallableObjectMap.containsKey(id)){
-            val api=jsCallableObjectMap[id]!!
-            if(api.hasFunc(func)){
-                try{
-                    encodeBase64(api.call(
-                        func,
-                        decodeBase64(args)
-                    ))
-                }catch (e:Exception){
-                    e.printStackTrace()
-                    encodeBase64(encodeError(e))
-                }
-            }else{
-                encodeBase64(encodeError(Exception("Function:${func} in Object:${id} is not found")))
-            }
+    fun readObject(id:String?,name:String):String{
+        return if(id==null){
+            readObjectInternal(baseJsObject,name)
+        }else if(acrossObj.containsKey(id)){
+            readObjectInternal(acrossObj[id]!!,name)
         }else{
             encodeBase64(encodeError(Exception("Object:${id} is not found")))
+        }
+    }
+
+    private fun readObjectInternal(obj:AcrossObject,name:String):String{
+        return try{
+            encodeBase64(encodeArg(obj.getField(name)))
+        }catch (e:Exception){
+            e.printStackTrace()
+            encodeBase64(encodeError(e))
         }
     }
 
@@ -183,7 +161,7 @@ class ZebView(private val src:WebView) {
      */
     @JavascriptInterface
     fun releaseObject(id:String){
-        jsCallableObjectMap.remove(id)
+        acrossObj.remove(id)
     }
 
     /**
@@ -290,25 +268,31 @@ class ZebView(private val src:WebView) {
             is JSONObject->{
                 return REST.JSON.v.toByteArray()+arg.toString().toByteArray()
             }
+            //send object
+            is AcrossObject ->{
+                val id = randomString(16)
+                acrossObj[id]=arg
+                val fields=arg.getFields()
+                val methods=arg.getMethods()
+                val buf=ArrayList<Byte>()
+                //head 1
+                buf.add(REST.OBJECT.v)
+                //id 16
+                buf.addAll(id.toByteArray().asIterable())
+                //field
+                buf.addAll(
+                    fields.joinToString(",").toByteArray().asIterable()
+                )
+                //split
+                buf.add(0x00)
+                //method
+                buf.addAll(
+                    methods.joinToString(",").toByteArray().asIterable()
+                )
+                return buf.toByteArray()
+            }
             else->{
-                //判断是不是Object
-                if(arg::class.java.isAnnotationPresent(JavascriptClass::class.java)){
-                    //为对象生成name
-                    val objectId= randomString(16)
-                    val jsObject=addJsObjectInterval(
-                        objectId,
-                        arg
-                    )
-                    return REST.OBJECT.v.toByteArray()+
-                            //对象名称
-                            objectId.toByteArray()+
-                            //结尾
-                            0+
-                            //方法名称
-                            jsObject.funcList().joinToString(",").toByteArray()
-                }else{
-                    throw Exception("Not support type to encode：$arg")
-                }
+                throw Exception("Not support type to encode：$arg. If you need transfer a object, please use AcrossObject")
             }
         }
     }
@@ -410,41 +394,5 @@ class ZebView(private val src:WebView) {
             out.add(decodeArg(data))
         }
         return out.toArray()
-    }
-
-    /**
-     * Service class
-     */
-    private inner class JsCallableObject(private val obj: Any) {
-
-        private val funcMap = HashMap<String, Method>()
-
-        init {
-            //扫描所有方法
-            obj.javaClass.methods.forEach { method ->
-                //是否被修饰
-                if (method.isAnnotationPresent(JavascriptInterface::class.java)) {
-                    funcMap[method.name] = method
-                }
-            }
-        }
-
-        fun funcList(): Set<String> {
-            return funcMap.keys
-        }
-
-        fun hasFunc(name: String): Boolean {
-            return funcMap.containsKey(name)
-        }
-
-        fun call(name: String, bytes: ByteArray): ByteArray {
-            //js调用java方法，将js对象转为java对象
-            val method = funcMap[name]!!
-            val argsArray=decodeArray(bytes)
-            //执行函数
-            val res=method.invoke(obj, *argsArray)
-            //返回参数
-            return encodeArg(res)
-        }
     }
 }

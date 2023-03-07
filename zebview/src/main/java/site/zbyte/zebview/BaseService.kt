@@ -2,9 +2,8 @@ package site.zbyte.zebview
 
 import android.webkit.JavascriptInterface
 import site.zbyte.zebview.callback.Callback
-import site.zbyte.zebview.callback.EmptyResponse
+import site.zbyte.zebview.data.AcrossObject
 
-@JavascriptClass
 class BaseService(private val zv:ZebView) {
 
     //存放初始化所用所有对象 不释放
@@ -15,8 +14,6 @@ class BaseService(private val zv:ZebView) {
     @JavascriptInterface
     fun registerServiceWatcher(obj: Callback):Array<Any>{
         synchronized(this) {
-            //每次重新注册服务，代表js端刷新了界面，向管道里写入空数据，避免上一个页面阻塞的receive把新第一个消息拿走了
-            zv.appendResponse(EmptyResponse())
             callbackObj = obj
             return globalServiceCallback.toArray()
         }
@@ -27,9 +24,7 @@ class BaseService(private val zv:ZebView) {
         zv.finalizeFromJs(token,args)
     }
 
-    fun onAdd(name:String,obj:Any){
-        if(!obj::class.java.isAnnotationPresent(JavascriptClass::class.java))
-            return
+    fun onAdd(name:String,obj: AcrossObject){
         synchronized(this){
             //保存一下
             globalServiceCallback.add(name)

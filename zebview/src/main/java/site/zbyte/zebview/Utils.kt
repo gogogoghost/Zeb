@@ -1,5 +1,6 @@
 package site.zbyte.zebview
 
+import org.json.JSONObject
 import java.nio.ByteBuffer
 import java.util.*
 
