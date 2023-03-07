@@ -1,0 +1,5 @@
+jdk:
+  - openjdk8
+install:
+  - echo "Building zebview..."
+  - ./gradlew clean -Pgroup=$GROUP -Pversion=$VERSION -xtest -xlint :zebview:assemble :zebview:publishToMavenLocal
