@@ -2,7 +2,7 @@ package site.zbyte.zebview
 
 import android.webkit.JavascriptInterface
 import site.zbyte.zebview.callback.Callback
-import site.zbyte.zebview.data.AcrossObject
+import site.zbyte.zebview.data.SharedObject
 
 class BaseService(private val zv:ZebView) {
 
@@ -19,12 +19,7 @@ class BaseService(private val zv:ZebView) {
         }
     }
 
-    @JavascriptInterface
-    fun finalizePromise(token:String,args:String){
-        zv.finalizeFromJs(token,args)
-    }
-
-    fun onAdd(name:String,obj: AcrossObject){
+    fun onAdd(name:String,obj: SharedObject){
         synchronized(this){
             //保存一下
             globalServiceCallback.add(name)

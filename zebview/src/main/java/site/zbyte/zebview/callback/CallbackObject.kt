@@ -13,7 +13,7 @@ class CallbackObject(
     fun call(funcName:String, vararg args:Any?):Promise<Any?>{
         val promise = Promise<Any?>{}
         zv.appendResponse(object :Response{
-            override fun toByteArray(): ByteArray {
+            override fun encode(): ByteArray {
                 return Response.REST.OBJECT_CALLBACK.v.toByteArray()+
                         //对象token
                         objectToken.toByteArray()+
@@ -34,7 +34,7 @@ class CallbackObject(
 
     protected fun finalize(){
         zv.appendResponse(object :Response{
-            override fun toByteArray(): ByteArray {
+            override fun encode(): ByteArray {
                 return Response.REST.RELEASE_OBJECT.v.toByteArray()+
                         //方法名称
                         objectToken.toByteArray()

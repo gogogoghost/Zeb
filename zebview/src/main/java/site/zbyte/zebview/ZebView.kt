@@ -10,7 +10,7 @@ import site.zbyte.zebview.callback.Callback
 import site.zbyte.zebview.callback.CallbackObject
 import site.zbyte.zebview.callback.Promise
 import site.zbyte.zebview.callback.Response
-import site.zbyte.zebview.data.AcrossObject
+import site.zbyte.zebview.data.SharedObject
 import java.nio.ByteBuffer
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -57,11 +57,11 @@ class ZebView(private val src:WebView) {
     }
 
 //    普通的js可调用对象
-    private val acrossObj=HashMap<String,AcrossObject>()
+    private val acrossObj=HashMap<String,SharedObject>()
 
     //_base对象
     private val baseService=BaseService(this)
-    private val baseJsObject=AcrossObject(baseService)
+    private val baseJsObject=SharedObject(baseService)
 
 //    native侧的promise存储
     private val promiseMap=HashMap<String,Promise<Any?>>()
@@ -80,18 +80,11 @@ class ZebView(private val src:WebView) {
     }
 
     //添加一个 命名对象供js调用
-    fun addJsObject(name:String, obj: AcrossObject): ZebView {
+    fun addJsObject(name:String, obj: SharedObject): ZebView {
         //发送给js
         baseService.onAdd(name,obj)
         return this
     }
-
-    //添加一个 匿名对象供js调用
-//    private fun addJsObjectInternal(id:String,obj:Any):JsCallableObject{
-//        return JsCallableObject(obj).also {
-//            jsCallableObjectMap[id]=it
-//        }
-//    }
 
     /**
      * 获取版本
@@ -99,15 +92,6 @@ class ZebView(private val src:WebView) {
     @JavascriptInterface
     fun getVersion():String{
         return BuildConfig.version
-    }
-
-    /**
-     * 构造错误
-     */
-    @JavascriptInterface
-    fun encodeError(err:Exception):ByteArray{
-        return byteArrayOf(REST.ERROR.v)+
-                err.toStr().toByteArray()
     }
 
     /**
@@ -120,19 +104,19 @@ class ZebView(private val src:WebView) {
         }else if(acrossObj.containsKey(id)){
             callObjectInternal(acrossObj[id]!!,func, args)
         }else{
-            encodeBase64(encodeError(Exception("Object:${id} is not found")))
+            eArg(Exception("Object:${id} is not found"))
         }
     }
 
-    private fun callObjectInternal(obj:AcrossObject,func:String,args:String):String{
+    private fun callObjectInternal(obj:SharedObject, func:String, args:String):String{
         return try{
-            encodeBase64(encodeArg(obj.callMethod(
+            eArg(obj.callMethod(
                 func,
-                decodeArray(decodeBase64(args))
-            )))
+                dArr(args)
+            ))
         }catch (e:Exception){
             e.printStackTrace()
-            encodeBase64(encodeError(e))
+            eArg(e)
         }
     }
 
@@ -143,16 +127,16 @@ class ZebView(private val src:WebView) {
         }else if(acrossObj.containsKey(id)){
             readObjectInternal(acrossObj[id]!!,name)
         }else{
-            encodeBase64(encodeError(Exception("Object:${id} is not found")))
+            eArg(Exception("Object:${id} is not found"))
         }
     }
 
-    private fun readObjectInternal(obj:AcrossObject,name:String):String{
+    private fun readObjectInternal(obj:SharedObject, name:String):String{
         return try{
-            encodeBase64(encodeArg(obj.getField(name)))
+            eArg(obj.getField(name))
         }catch (e:Exception){
             e.printStackTrace()
-            encodeBase64(encodeError(e))
+            eArg(e)
         }
     }
 
@@ -169,7 +153,7 @@ class ZebView(private val src:WebView) {
      */
     fun appendResponse(res:Response,promiseId:String?=null){
         handler.post{
-            val str=Base64.encodeToString(res.toByteArray(),Base64.NO_WRAP)
+            val str=encodeBase64(res.encode())
             if(promiseId==null){
                 src.evaluateJavascript("window.zvReceive('${str}')",null)
             }else{
@@ -185,10 +169,10 @@ class ZebView(private val src:WebView) {
     /**
      * js测完成回调后将数据响应
      */
-    fun finalizeFromJs(token:String,args:String){
+    @JavascriptInterface
+    fun finalizePromise(token:String,args:String){
         promiseMap[token]?.run {
-            val bytes=decodeBase64(args)
-            val res = decodeArg(bytes)
+            val res = dArg(args)
             if(res is Exception){
                 reject(res)
             }else{
@@ -235,7 +219,7 @@ class ZebView(private val src:WebView) {
             is Promise<*> ->{
                 arg.then {
                     appendResponse(object :Response{
-                        override fun toByteArray(): ByteArray {
+                        override fun encode(): ByteArray {
                             return byteArrayOf(Response.REST.PROMISE_FINISH.v)+
                                     arg.getId().toByteArray()+
                                     //停止符号
@@ -247,7 +231,7 @@ class ZebView(private val src:WebView) {
                     })
                 }.catch {
                     appendResponse(object :Response{
-                        override fun toByteArray(): ByteArray {
+                        override fun encode(): ByteArray {
                             return byteArrayOf(Response.REST.PROMISE_FINISH.v)+
                                     arg.getId().toByteArray()+
                                     //停止符号
@@ -269,8 +253,8 @@ class ZebView(private val src:WebView) {
                 return REST.JSON.v.toByteArray()+arg.toString().toByteArray()
             }
             //send object
-            is AcrossObject ->{
-                val id = randomString(16)
+            is SharedObject ->{
+                val id = randomString(8)
                 acrossObj[id]=arg
                 val fields=arg.getFields()
                 val methods=arg.getMethods()
@@ -290,6 +274,11 @@ class ZebView(private val src:WebView) {
                     methods.joinToString(",").toByteArray().asIterable()
                 )
                 return buf.toByteArray()
+            }
+            //exception
+            is Exception->{
+                return byteArrayOf(REST.ERROR.v)+
+                        arg.toStr().toByteArray()
             }
             else->{
                 throw Exception("Not support type to encode：$arg. If you need transfer a object, please use AcrossObject")
@@ -394,5 +383,22 @@ class ZebView(private val src:WebView) {
             out.add(decodeArg(data))
         }
         return out.toArray()
+    }
+
+    /**
+     * encode and decode helper
+     */
+    //===========
+    private fun eArg(arg:Any?):String{
+        return encodeBase64(encodeArg(arg))
+    }
+    private fun eArr(arr:Array<*>):String{
+        return encodeBase64(encodeArray(arr))
+    }
+    private fun dArg(str:String):Any?{
+        return decodeArg(decodeBase64(str))
+    }
+    private fun dArr(str:String):Array<Any?>{
+        return decodeArray(decodeBase64(str))
     }
 }

@@ -9,15 +9,15 @@ class Promise<T>: PromiseCallback<T?> {
 
     companion object{
         //默认handler
-        private val handlerThread= HandlerThread("promise").also {
+        private val jsThread= HandlerThread("promise").also {
             it.start()
         }
-        private val promiseHandler= Handler(handlerThread.looper)
+        private val jsHandler= Handler(jsThread.looper)
     }
 
     private val handler:Handler
 
-    constructor(processor:(PromiseCallback<T?>)->Unit):this(processor, promiseHandler)
+    constructor(processor:(PromiseCallback<T?>)->Unit):this(processor, jsHandler)
 
     constructor(processor:(PromiseCallback<T?>)->Unit, handler:Handler) {
         //初始化handler 并且执行promise
@@ -52,10 +52,10 @@ class Promise<T>: PromiseCallback<T?> {
     private var catchResult:Exception?=null
 
     //随机生成promise id
-    private val id= randomString(16)
+    private val id = randomString(8)
 
     //锁
-    private val lock=Object()
+    private val lock = Object()
 
     //Native使用的then
     fun then(callback:(T?)->Unit): Promise<T> {

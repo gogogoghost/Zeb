@@ -1,4 +1,4 @@
-import { num2arr, concatArr, arr2num, arr2float,makeBuffer } from "./utils";
+import { num2arr, concatArr, arr2num, arr2float,makeBuffer,randomString } from "./utils";
 import {Base64} from 'js-base64'
 
 // js请求native的数据类型
@@ -36,7 +36,6 @@ const REST = {
 
 // 异步回调消息处理
 const AREST = {
-    EMPTY:0,
     CALLBACK: 1,
     OBJECT_CALLBACK: 2,
     RELEASE_CALLBACK: 3,
@@ -92,17 +91,7 @@ if(window.FinalizationRegistry){
         window.zebview.releaseObject(token)
     })
 }else{
-    console.warn("No support FinalizationRegistry. Js object receive from native will not auto release.")
-}
-
-//生成随机字符串
-function randomString(e) {
-    e = e || 32;
-    let t = "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678",
-        a = t.length,
-        n = "";
-    for (let i = 0; i < e; i++) n += t.charAt(Math.floor(Math.random() * a));
-    return n
+    console.warn("Not support FinalizationRegistry. Js object receive from native will be not released.")
 }
 
 function isObjHasFunction(obj){
@@ -114,7 +103,7 @@ function isObjHasFunction(obj){
     return false
 }
 
-//编码参数
+//obj -> bytes -> base64
 function encodeArg(arg) {
     if (arg == null || arg == undefined){
         return num2arr(REQT.NULL, 1)
@@ -147,7 +136,7 @@ function encodeArg(arg) {
             textEncoder.encode(arg)
         )
     } else if (c == Function) {
-        const token = randomString(16)
+        const token = randomString(8)
         functionMap[token] = arg
         return concatArr(
             num2arr(REQT.FUNCTION, 1),
@@ -156,7 +145,7 @@ function encodeArg(arg) {
     } else if (c == Object) {
         //判断对象内有没有方法
         if(isObjHasFunction(arg)){
-            const token = randomString(16)
+            const token = randomString(8)
             objectMap[token] = arg
             return concatArr(
                 num2arr(REQT.OBJECT, 1),
@@ -226,12 +215,12 @@ function decodeArg(bytes) {
         case REST.FLOAT:
             return arr2float(body)
         case REST.OBJECT:
-            //16字节长的id
+            //8字节长的id
             const token = textDecoder.decode(
-                body.slice(0, 16)
+                body.slice(0, 8)
             )
-            const index=body.indexOf(0,16)
-            const fieldArr = body.slice(16,index)
+            const index=body.indexOf(0,8)
+            const fieldArr = body.slice(8,index)
             const methodArr = body.slice(index+1,body.length)
 
             const fieldList = textDecoder.decode(fieldArr).split(',')
@@ -334,9 +323,6 @@ async function processMessage(bytes,resCallback) {
     const t = bytes[0]
     const body = bytes.slice(1)
     switch (t) {
-        case AREST.EMPTY:
-            //空消息
-            return
         case AREST.CALLBACK:
             {
                 // 调用回调
@@ -408,7 +394,6 @@ async function processMessage(bytes,resCallback) {
 if (window.zebview) {
     const baseApi = createObject(null,[],[
         "registerServiceWatcher",
-        "finalizePromise"
     ], true)
     const objList = baseApi.registerServiceWatcher((name, obj) => {
         apiInternal[name] = obj
@@ -427,7 +412,7 @@ if (window.zebview) {
         let resValue=null
         try{
             await processMessage(
-                new Uint8Array(data),
+                data,
                 (res)=>{
                     resValue=res
                 }
@@ -437,15 +422,13 @@ if (window.zebview) {
             resValue=e
         }
         if(promiseId){
-            baseApi.finalizePromise(
+            window.zebview.finalizePromise(
                 promiseId,
                 Base64.fromUint8Array(encodeArg(resValue))
             )
         }
     }
 }
-
-window.api=api
 
 export {
     api

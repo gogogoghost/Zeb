@@ -4,7 +4,7 @@ import android.webkit.JavascriptInterface
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 
-class AcrossObject(
+class SharedObject(
     private val obj:Any,
     private val internal:Boolean=false,
     private val unsafe:Boolean=false

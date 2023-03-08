@@ -1,49 +1,52 @@
-
-console.log("before")
-
 import {api} from './bridge'
 
-console.log("run")
-// const res=api.TestService.testByte(new Uint8Array([10,20,30,40,50,60]))
-// console.log(res)
-// const res=api.TestService.test(
-//     10,
-//     1.1,
-//     "abcdefg"
-//     ,
-//     true
-//     ,
-//     [10,20]
-//     ,function(){
-//         console.log("callback!!!!!!!!!!!",arguments)
-//     },{
-//         success(obj){
-//             console.log("success!!!!!!!",obj)
-//         }
-//     }
-// )
-// console.log(res)
+function $(){
+    return document.querySelector(...arguments)
+}
 
-
-// console.log("start!")
-// api.TestService.manyWork().then((res)=>{
-//     console.log("resolve",res)
-// }).catch((err)=>{
-//     console.log("reject")
-//     console.error(err)
-// })
-
-// console.log(api.TestService.jsonTest({
-//     "age":99
-// }))
-
-// let hasTrow=false
-// api.TestService.testReturnFromCallback((name)=>{
-//     console.log("testReturnFromCallback",name)
-//     if(!hasTrow){
-//         hasTrow=true
-//         throw new Error("custom error",{cause:new Error("source error")})
-//     }
-// })
-
-api.TestService.testNull(null)
+$('#getAge').onclick=()=>{
+    console.log(api.TestService.age)
+}
+$('#addAge').onclick=()=>{
+    console.log(api.TestService.ageAdd())
+}
+$('#getPromise').onclick=()=>{
+    const d=$('#promiseOut')
+    console.log('Waiting for resolve')
+    api.TestService.getPromise().then((res)=>{
+        console.log('resolve:'+res)
+    })
+}
+$('#callObj').onclick=()=>{
+    const obj=api.TestService.getInnerObject()
+    console.log(obj.innerFunction())
+}
+$('#testType').onclick=()=>{
+    const res=api.TestService.testType(
+        0xff,
+        0x5555555555,
+        -10.24,
+        "Hello world",
+        false,
+        new Uint8Array([0x5f,0x68]),
+        null,
+        {name:'Jack',age:18},
+        [
+            "Don't worry",
+            {price:100},
+            [-100,200,-300],
+            "Be Happy"
+        ],
+        function(){
+            console.log(arguments)
+            return "Yes Please"
+        },
+        {
+            done(txt){
+                console.log(txt)
+                return 999
+            }
+        }
+    )
+    console.log(res)
+}

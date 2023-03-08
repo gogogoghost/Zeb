@@ -3,7 +3,6 @@ package site.zbyte.zebview.callback
 interface Response {
 
     enum class REST(val v:Byte){
-        EMPTY(0),
         CALLBACK(1),
         OBJECT_CALLBACK(2),
         RELEASE_CALLBACK(3),
@@ -11,5 +10,5 @@ interface Response {
         PROMISE_FINISH(5)
     }
 
-    fun toByteArray():ByteArray
+    fun encode():ByteArray
 }
