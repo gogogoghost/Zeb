@@ -2,6 +2,7 @@ package site.zbyte.zebview.callback
 
 import site.zbyte.zebview.ZebView
 import site.zbyte.zebview.toByteArray
+import java.io.ByteArrayOutputStream
 
 class CallbackObject(
     private val zv: ZebView,
@@ -14,17 +15,14 @@ class CallbackObject(
         val promise = Promise<Any?>{}
         zv.appendResponse(object :Response{
             override fun encode(): ByteArray {
-                return Response.REST.OBJECT_CALLBACK.v.toByteArray()+
-                        //对象token
-                        objectToken.toByteArray()+
-                        //0分割
-                        0+
-                        //方法标记名称
-                        funcName.toByteArray()+
-                        //0分割
-                        0+
-                        //回调内容
-                        zv.encodeArray(args)
+                val b=ByteArrayOutputStream()
+                b.write(Response.REST.OBJECT_CALLBACK.v.toByteArray())
+                b.write(objectToken.toByteArray())
+                b.write(byteArrayOf(0x00))
+                b.write(funcName.toByteArray())
+                b.write(byteArrayOf(0x00))
+                zv.encodeArray(args,b)
+                return b.toByteArray()
             }
         }, promise.getId())
         zv.savePromise(promise)
@@ -35,9 +33,10 @@ class CallbackObject(
     protected fun finalize(){
         zv.appendResponse(object :Response{
             override fun encode(): ByteArray {
-                return Response.REST.RELEASE_OBJECT.v.toByteArray()+
-                        //方法名称
-                        objectToken.toByteArray()
+                val b=ByteArrayOutputStream()
+                b.write(Response.REST.RELEASE_OBJECT.v.toByteArray())
+                b.write(objectToken.toByteArray())
+                return b.toByteArray()
             }
         })
     }

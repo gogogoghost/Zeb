@@ -10,13 +10,6 @@ $('#getAge').onclick=()=>{
 $('#addAge').onclick=()=>{
     console.log(api.TestService.ageAdd())
 }
-$('#getPromise').onclick=()=>{
-    const d=$('#promiseOut')
-    console.log('Waiting for resolve')
-    api.TestService.getPromise().then((res)=>{
-        console.log('resolve:'+res)
-    })
-}
 $('#callObj').onclick=()=>{
     const obj=api.TestService.getInnerObject()
     console.log(obj.innerFunction())

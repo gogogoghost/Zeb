@@ -11,6 +11,7 @@ import site.zbyte.zebview.callback.CallbackObject
 import site.zbyte.zebview.callback.Promise
 import site.zbyte.zebview.callback.Response
 import site.zbyte.zebview.data.SharedObject
+import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -185,72 +186,82 @@ class ZebView(private val src:WebView) {
     /**
      * 编码一个对象返回(类型)+(body)
      */
-    fun encodeArg(arg:Any?):ByteArray{
+    fun encodeArg(arg:Any?, b:ByteArrayOutputStream=ByteArrayOutputStream()):ByteArrayOutputStream{
         when(arg){
             null->{
-                return REST.NULL.v.toByteArray()
+                b.write(REST.NULL.v.toByteArray())
             }
             //number
             is Int->{
-                return REST.INT.v.toByteArray()+arg.toByteArray()
+                b.write(REST.INT.v.toByteArray())
+                b.write(arg.toByteArray())
             }
             is Long->{
-                return REST.INT.v.toByteArray()+arg.toByteArray()
+                b.write(REST.INT.v.toByteArray())
+                b.write(arg.toByteArray())
             }
             is Float->{
-                return REST.FLOAT.v.toByteArray()+arg.toByteArray()
+                b.write(REST.FLOAT.v.toByteArray())
+                b.write(arg.toByteArray())
             }
             is Double->{
-                return REST.FLOAT.v.toByteArray()+arg.toByteArray()
+                b.write(REST.FLOAT.v.toByteArray())
+                b.write(arg.toByteArray())
             }
             //string
             is String->{
-                return REST.STRING.v.toByteArray()+arg.toByteArray()
+                b.write(REST.STRING.v.toByteArray())
+                b.write(arg.toByteArray())
             }
             //boolean
             is Boolean->{
-                return REST.BOOLEAN.v.toByteArray()+if(arg) 0x01 else 0x00
+                b.write(REST.BOOLEAN.v.toByteArray())
+                b.write(if(arg) 0x01 else 0x00)
             }
             //array
             is Array<*> ->{
-                return REST.ARRAY.v.toByteArray()+encodeArray(arg)
+                b.write(REST.ARRAY.v.toByteArray())
+                encodeArray(arg,b)
             }
             //promise
             is Promise<*> ->{
                 arg.then {
                     appendResponse(object :Response{
                         override fun encode(): ByteArray {
-                            return byteArrayOf(Response.REST.PROMISE_FINISH.v)+
-                                    arg.getId().toByteArray()+
-                                    //停止符号
-                                    0+
-                                    //resolve符号
-                                    1+
-                                    encodeArg(it)
+                            val b2=ByteArrayOutputStream()
+                            b2.write(Response.REST.PROMISE_FINISH.v.toByteArray())
+                            b2.write(arg.getId().toByteArray())
+                            b2.write(byteArrayOf(0x00))
+                            b2.write(byteArrayOf(0x01))
+                            encodeArg(it,b2)
+                            return b2.toByteArray()
                         }
                     })
                 }.catch {
                     appendResponse(object :Response{
                         override fun encode(): ByteArray {
-                            return byteArrayOf(Response.REST.PROMISE_FINISH.v)+
-                                    arg.getId().toByteArray()+
-                                    //停止符号
-                                    0+
-                                    //reject符号
-                                    0+
-                                    encodeArg(it?.toStr())
+                            val b2=ByteArrayOutputStream()
+                            b2.write(Response.REST.PROMISE_FINISH.v.toByteArray())
+                            b2.write(arg.getId().toByteArray())
+                            b2.write(byteArrayOf(0x00))
+                            b2.write(byteArrayOf(0x00))
+                            encodeArg(it,b2)
+                            return b2.toByteArray()
                         }
                     })
                 }
-                return REST.PROMISE.v.toByteArray()+arg.getId().toByteArray()
+                b.write(REST.PROMISE.v.toByteArray())
+                b.write(arg.getId().toByteArray())
             }
             //bytearray
             is ByteArray->{
-                return REST.BYTEARRAY.v.toByteArray()+arg
+                b.write(REST.BYTEARRAY.v.toByteArray())
+                b.write(arg)
             }
             //json
             is JSONObject->{
-                return REST.JSON.v.toByteArray()+arg.toString().toByteArray()
+                b.write(REST.JSON.v.toByteArray())
+                b.write(arg.toString().toByteArray())
             }
             //send object
             is SharedObject ->{
@@ -258,47 +269,45 @@ class ZebView(private val src:WebView) {
                 acrossObj[id]=arg
                 val fields=arg.getFields()
                 val methods=arg.getMethods()
-                val buf=ArrayList<Byte>()
                 //head 1
-                buf.add(REST.OBJECT.v)
-                //id 16
-                buf.addAll(id.toByteArray().asIterable())
+                b.write(REST.OBJECT.v.toByteArray())
+                //id 8
+                b.write(id.toByteArray())
                 //field
-                buf.addAll(
-                    fields.joinToString(",").toByteArray().asIterable()
+                b.write(
+                    fields.joinToString(",").toByteArray()
                 )
                 //split
-                buf.add(0x00)
+                b.write(byteArrayOf(0x00))
                 //method
-                buf.addAll(
-                    methods.joinToString(",").toByteArray().asIterable()
+                b.write(
+                    methods.joinToString(",").toByteArray()
                 )
-                return buf.toByteArray()
             }
             //exception
             is Exception->{
-                return byteArrayOf(REST.ERROR.v)+
-                        arg.toStr().toByteArray()
+                b.write(REST.ERROR.v.toByteArray())
+                b.write(arg.toStr().toByteArray())
             }
             else->{
                 throw Exception("Not support type to encode：$arg. If you need transfer a object, please use AcrossObject")
             }
         }
+        return b
     }
 
     /**
      * 编码一个数组返回(body)
      */
-    fun encodeArray(arg:Array<*>):ByteArray{
-        val arr=ArrayList<Byte>()
+    fun encodeArray(arg:Array<*>,b:ByteArrayOutputStream= ByteArrayOutputStream()):ByteArrayOutputStream{
         arg.forEach {
             val data=encodeArg(it)
             //length
-            arr.addAll(ByteBuffer.allocate(4).putInt(data.size).array().asIterable())
+            b.write(data.size().toByteArray())
             //body
-            arr.addAll(data.asIterable())
+            b.write(data.toByteArray())
         }
-        return arr.toByteArray()
+        return b
     }
 
     /**
@@ -390,10 +399,10 @@ class ZebView(private val src:WebView) {
      */
     //===========
     private fun eArg(arg:Any?):String{
-        return encodeBase64(encodeArg(arg))
+        return encodeBase64(encodeArg(arg).toByteArray())
     }
     private fun eArr(arr:Array<*>):String{
-        return encodeBase64(encodeArray(arr))
+        return encodeBase64(encodeArray(arr).toByteArray())
     }
     private fun dArg(str:String):Any?{
         return decodeArg(decodeBase64(str))
