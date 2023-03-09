@@ -134,15 +134,13 @@ async()=>{
         function(){
             //print all params above this function
             console.log(arguments)
-            
             return "Yes Please"
         },
-		//object with multiple callback
+        //object with multiple callback
         {
             done(txt){
                 //print 'Yes Please'
                 console.log(txt)
-                
                 return 999
             }
         }
