@@ -21,8 +21,8 @@ $('#callObj').onclick=()=>{
     const obj=api.TestService.getInnerObject()
     console.log(obj.innerFunction())
 }
-$('#testType').onclick=()=>{
-    const res=api.TestService.testType(
+$('#testType').onclick=async()=>{
+    const res=await api.TestService.testType(
         0xff,
         0x5555555555,
         -10.24,

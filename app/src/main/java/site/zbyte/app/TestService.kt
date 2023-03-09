@@ -19,15 +19,6 @@ class TestService {
         return age
     }
 
-    // return promise
-    @JavascriptInterface
-    fun getPromise():Promise<String?>{
-        return Promise<String?>{
-            Thread.sleep(3000)
-            it.resolve("resolved!")
-        }
-    }
-
     // return a SharedObject
     private val innerObject = SharedObject(InnerCls())
 
@@ -57,8 +48,8 @@ class TestService {
         aArr:Array<Any?>,
         cb: Callback,
         obj: CallbackObject,
-    ):Any?{
-        thread {
+    ):Promise<Any?>{
+        return Promise{
             val res=cb.call(
                 aInt,
                 aLong,
@@ -70,8 +61,8 @@ class TestService {
                 json,
                 aArr
             ).await()
-            obj.call("done",res).await()
+            val res2=obj.call("done",res).await()
+            it.resolve(res2)
         }
-        return null
     }
 }

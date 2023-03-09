@@ -4,92 +4,155 @@
 
 Bridge between javascript and java/kotlin on Android WebView
 
+- Supports multiple types
+- Js call Java and get return
+- Java call js callback and get return
+- Support promise
+- Exception/Error can throw to each other
+
 ### Get Start
-
-There are two parts for getting start
-
-#### Android Part
 
 Add jitpack repository
 
 ```groovy
+
 repositories {
     maven { url 'https://jitpack.io' }
 }
+
 ```
 
 Add dependency
 
 ```groovy
+
 dependencies {
     implementation "site.zbyte:zebview:${version}"
 }
+
 ```
 
-Create ZebView in layout xml file or by java code(kotlin)
+Native
 
 ```kotlin
-//Make a service
-@JavascriptClass
-object TestServiceObject{
 
-    /**
-     * in js:
-     * api.TestService.test(100,"Hello World",false)
-     */
-    @JavascriptInterface
-    fun test(intVal:Int,strVal:String,boolVal:Boolean){
-        //This function invoke by js and can return something
-        //See [Support Params Type] behind
-    }
+//Init zebview
+val zv=ZebView(webview)
 
-    /**
-     * in js:
-     * api.TestService.manyWork().then((res)=>{
-     *      //print "result"
-     *      console.log(res)
-     * })
-     */
-    @JavascriptInterface
-    fun manyWork():Promise<String>{
-        return Promise<String>{
-            //do many work
-            it.resolve("result")
-        }
-    }
+//Insert your object into js named TestService
+zv.addJsObject("TestService", 
+    SharedObject(
+        //Your object
+        TestService(),
+        //Js can access private field/method is internal is true
+        internal = true,
+        //Js can invoke @JavascriptInterface method default. All method available if unsafe is true
+        unsafe = true
+    )
+)
 
-    /**
-     * in js:
-     * api.TestService.notifyJs((name)=>{
-     *      return "my name is "+name
-     * })
-     */
-    @JavascriptInterface
-    fun notifyJs(callback:Callback){
-        callback.call("Jack").then{it->
-            //print "my name is Jack"
-            println(it)
-        }
-    }
-}
-
-//Create ZebView
-val webView=new WebView(context)
-val zv=ZebView(webView)
-
-//Add Service
-zv.addJsObject("TestService",TestServiceObject)
-    .addJsObject("SecondService",SecondServiceObject)
-
-//Load your page
-zv.loadUrl("http://192.168.0.137:3000")
 ```
 
-#### Frontend Part
+Javascript
 
-See [zebview-bridge](https://github.com/gogogoghost/Zebview/tree/master/frontend)
+```js
+import {api} from 'zebview'
+//Call function
+const res = api.TestService.someFunc()
+//Read field
+const field = api.TestService.someField
+```
 
-### Support Params Type
+### A complex usage
+
+Function in Class TestService
+
+```kotlin
+
+@JavascriptInterface
+fun testType(
+    aInt:Int,
+    aLong:Long,
+    aFloat:Double,
+    aStr:String,
+    aBool:Boolean,
+    bytes:ByteArray,
+    nil:Any?,
+    json:JSONObject,
+    aArr:Array<Any?>,
+    cb: Callback,
+    obj: CallbackObject,
+):Promise<Any?>{
+    return Promise{
+        val res=cb.call(
+            aInt,
+            aLong,
+            aFloat,
+            aStr,
+            aBool,
+            bytes,
+            nil,
+            json,
+            aArr
+        ).await()
+        val res2=obj.call("done",res).await()
+        it.resolve(res2)
+    }
+}
+```
+
+Use in js
+
+```js
+
+async()=>{
+    const res=await api.TestService.testType(
+        //1 byte
+        0xff,
+        //5 bytes
+        0x5555555555,
+        //double
+        -10.24,
+        //string
+        "Hello world",
+        //boolean
+        false,
+        //bytes array
+        new Uint8Array([0x5f,0x68]),
+        //null
+        null,
+        //json object
+        {name:'Jack',age:18},
+        //array of any type
+        [
+            "Don't worry",
+            {price:100},
+            [-100,200,-300],
+            "Be Happy"
+        ],
+        //callback
+        function(){
+            //print all params above this function
+            console.log(arguments)
+            
+            return "Yes Please"
+        },
+		//object with multiple callback
+        {
+            done(txt){
+                //print 'Yes Please'
+                console.log(txt)
+                
+                return 999
+            }
+        }
+    )
+    //print 999
+    console.log(res)
+}
+```
+
+### Supports multiple types
 
 Javascript -> Java (function params)
 
@@ -100,21 +163,20 @@ Javascript -> Java (function params)
 - Boolean -> Boolean
 - Callback function -> [Callback](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/callback/Callback.kt)
 - Object with function -> [CallbackObject](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/callback/CallbackObject.kt)
-- Uint8Array -> byte[]
-- Array -> Array<Any>
 - Object without function -> org.json.JSONObject
+- Uint8Array -> byte[]
+- Array -> Array<Any?>
 
 ---
 
-Java -> Javascript (callback params or function result)
+Java -> Javascript (callback params / function result / promise resolve)
 
 - NULL -> NULL
 - String -> String
-- Integer/Long -> Number
-- Float/Double -> Number
+- Integer/Long/Float/Double -> Number
 - Boolean -> Boolean
-- Object with [JavascriptClass](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/JavascriptClass.kt) annotation -> Object with function callable (function need **JavascriptInterface** annotation)
+- [SharedObject](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/data/SharedObject.kt) -> Object
 - byte[] -> Uint8Array
-- Array<Any> -> Array
-- [Promise](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/Promise.kt)<T> -> Promise<T>
+- Array<Any?> -> Array
+- [Promise](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/Promise.kt)<T?> -> Promise<T?>
 - org.json.JSONObject -> Object
