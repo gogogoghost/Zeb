@@ -176,5 +176,5 @@ Java -> Javascript (callback params / function result / promise resolve)
 - [SharedObject](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/data/SharedObject.kt) -> Object
 - byte[] -> Uint8Array
 - Array<Any?> -> Array
-- [Promise](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/Promise.kt)<T?> -> Promise<T?>
+- [Promise](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/callback/Promise.kt)<T?> -> Promise<T?>
 - org.json.JSONObject -> Object
