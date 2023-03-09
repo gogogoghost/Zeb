@@ -44,7 +44,7 @@ zv.addJsObject("TestService",
     SharedObject(
         //Your object
         TestService(),
-        //Js can access private field/method is internal is true
+        //Js can access private field/method if internal is true
         internal = true,
         //Js can invoke @JavascriptInterface method default. All method available if unsafe is true
         unsafe = true
