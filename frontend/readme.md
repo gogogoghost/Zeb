@@ -1,15 +1,15 @@
-## ZebView
+## zeb-js
 
-[![](https://img.shields.io/npm/v/zebview-bridge.svg?style=flat-square)](https://www.npmjs.com/package/zebview-bridge)
+[![](https://img.shields.io/npm/v/zeb-js.svg?style=flat-square)](https://www.npmjs.com/package/zeb-js)
 
 Bridge between javascript and java on Android WebView
 
 ### Installation
 
 ```shell
-npm install zebview-bridge
+npm install zeb-js
 //or
-yarn add zebview-bridge
+yarn add zeb-js
 ```
 
-See [ZebView](https://github.com/gogogoghost/zebview) for more information
+See [Zeb](https://github.com/gogogoghost/zeb) for more information

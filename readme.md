@@ -1,6 +1,6 @@
-## ZebView
+## Zeb
 
-[![](https://jitpack.io/v/site.zbyte/zebview.svg)](https://jitpack.io/#site.zbyte/zebview)
+[![](https://jitpack.io/v/site.zbyte/zeb.svg)](https://jitpack.io/#site.zbyte/zeb)
 
 Bridge between javascript and java/kotlin on Android WebView
 
@@ -27,7 +27,7 @@ Add dependency
 ```groovy
 
 dependencies {
-    implementation "site.zbyte:zebview:${version}"
+    implementation "site.zbyte:zeb:${version}"
 }
 
 ```
@@ -36,11 +36,11 @@ Native
 
 ```kotlin
 
-//Init zebview
-val zv=ZebView(webview)
+//Init zeb
+val zeb=Zeb(webview)
 
 //Insert your object into js named TestService
-zv.addJsObject("TestService", 
+zeb.addJsObject("TestService", 
     SharedObject(
         //Your object
         TestService(),
@@ -56,7 +56,7 @@ zv.addJsObject("TestService",
 Javascript
 
 ```js
-import {api} from 'zebview'
+import {api} from 'zeb-js'
 //Call function
 const res = api.TestService.someFunc()
 //Read field
@@ -159,8 +159,8 @@ Javascript -> Java (function params)
 - Number(integer) -> Integer/Long(>0xffffffff)
 - Number(double) -> Double
 - Boolean -> Boolean
-- Callback function -> [Callback](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/callback/Callback.kt)
-- Object with function -> [CallbackObject](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/callback/CallbackObject.kt)
+- Callback function -> [Callback](https://github.com/gogogoghost/Zeb/blob/master/zeb/src/main/java/site/zbyte/zeb/callback/Callback.kt)
+- Object with function -> [CallbackObject](https://github.com/gogogoghost/Zeb/blob/master/zeb/src/main/java/site/zbyte/zeb/callback/CallbackObject.kt)
 - Object without function -> org.json.JSONObject
 - Uint8Array -> byte[]
 - Array -> Array<Any?>
@@ -173,8 +173,8 @@ Java -> Javascript (callback params / function result / promise resolve)
 - String -> String
 - Integer/Long/Float/Double -> Number
 - Boolean -> Boolean
-- [SharedObject](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/data/SharedObject.kt) -> Object
+- [SharedObject](https://github.com/gogogoghost/Zeb/blob/master/zeb/src/main/java/site/zbyte/zeb/data/SharedObject.kt) -> Object
 - byte[] -> Uint8Array
 - Array<Any?> -> Array
-- [Promise](https://github.com/gogogoghost/ZebView/blob/master/zebview/src/main/java/site/zbyte/zebview/callback/Promise.kt)<T?> -> Promise<T?>
+- [Promise](https://github.com/gogogoghost/Zeb/blob/master/zeb/src/main/java/site/zbyte/zeb/callback/Promise.kt)<T?> -> Promise<T?>
 - org.json.JSONObject -> Object
