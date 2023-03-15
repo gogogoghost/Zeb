@@ -12,6 +12,6 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "Zebview"
+rootProject.name = "Zeb"
 include ':app'
-include ':zebview'
+include ':zeb'

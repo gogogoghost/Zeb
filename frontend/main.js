@@ -1,4 +1,4 @@
-import {api} from './bridge'
+import {api} from './zeb'
 
 function $(){
     return document.querySelector(...arguments)

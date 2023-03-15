@@ -5,8 +5,8 @@ import android.os.Bundle
 import android.webkit.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewAssetLoader
-import site.zbyte.zebview.ZebView
-import site.zbyte.zebview.data.SharedObject
+import site.zbyte.zeb.Zeb
+import site.zbyte.zeb.data.SharedObject
 
 class MainActivity : AppCompatActivity() {
 
@@ -18,7 +18,7 @@ class MainActivity : AppCompatActivity() {
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
 
         val src=findViewById<WebView>(R.id.zv)
-        val zv=ZebView(src)
+        val zv=Zeb(src)
 
         zv.addJsObject("TestService", SharedObject(TestService(),true))
 

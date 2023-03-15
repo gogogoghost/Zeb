@@ -2,11 +2,10 @@ package site.zbyte.app
 
 import android.webkit.JavascriptInterface
 import org.json.JSONObject
-import site.zbyte.zebview.callback.Callback
-import site.zbyte.zebview.callback.CallbackObject
-import site.zbyte.zebview.callback.Promise
-import site.zbyte.zebview.data.SharedObject
-import kotlin.concurrent.thread
+import site.zbyte.zeb.callback.Callback
+import site.zbyte.zeb.callback.CallbackObject
+import site.zbyte.zeb.callback.Promise
+import site.zbyte.zeb.data.SharedObject
 
 class TestService {
 
