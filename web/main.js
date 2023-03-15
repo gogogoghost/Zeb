@@ -1,4 +1,4 @@
-import {api} from './zeb'
+import {api} from './lib/zeb'
 
 function $(){
     return document.querySelector(...arguments)

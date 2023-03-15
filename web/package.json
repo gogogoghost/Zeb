@@ -2,7 +2,7 @@
   "name": "zeb-js",
   "description": "Javascript bridge for Zebview which is a Android webview library",
   "version": "0.6.1",
-  "main": "zeb.js",
+  "main": "lib/zeb.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
