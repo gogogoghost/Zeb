@@ -1,5 +1,5 @@
 jdk:
   - openjdk11
 install:
-  - echo "Building zebview..."
+  - echo "Building zeb..."
   - ./gradlew clean -Pgroup=$GROUP -Pversion=$VERSION -xtest -xlint :zeb:assemble :zeb:publishToMavenLocal
