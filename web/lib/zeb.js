@@ -96,7 +96,7 @@ if(window.FinalizationRegistry){
 
 function isObjHasFunction(obj){
     for(const key in obj){
-        if(obj[key].constructor==Function){
+        if(obj[key] instanceof Function){
             return true
         }
     }

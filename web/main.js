@@ -35,7 +35,7 @@ $('#testType').onclick=async()=>{
             return "Yes Please"
         },
         {
-            done(txt){
+            done:async(txt)=>{
                 console.log(txt)
                 return 999
             }
