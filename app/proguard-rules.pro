@@ -19,3 +19,12 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# necessary
+-keepclassmembers class *{
+    @android.webkit.JavascriptInterface <methods>;
+}
+# your class will provide to js
+-keepclassmembers class site.zbyte.app.TestService{
+    *;
+}

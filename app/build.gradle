@@ -8,12 +8,12 @@ android {
         release {
         }
     }
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         applicationId "site.zbyte.zebview"
         minSdk 22
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
@@ -22,7 +22,7 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
