@@ -224,8 +224,11 @@ function decodeArg(bytes) {
             const fieldArr = body.slice(8,index)
             const methodArr = body.slice(index+1,body.length)
 
-            const fieldList = textDecoder.decode(fieldArr).split(',')
-            const funcList = textDecoder.decode(methodArr).split(',')
+            const fieldRaw = textDecoder.decode(fieldArr)
+            const funcRaw = textDecoder.decode(methodArr)
+
+            const fieldList = fieldRaw.length==0?[]:fieldRaw.split(',')
+            const funcList = funcRaw.length==0?[]:funcRaw.split(',')
         
             const obj = createObject(token, fieldList, funcList)
             //当对象不使用的时候 通知native回收内存
