@@ -14,6 +14,12 @@ class Promise<T>: PromiseCallback<T?> {
         private val jsHandler= Handler(jsThread.looper)
     }
 
+    enum class State{
+        Pending,
+        Resolved,
+        Rejected
+    }
+
     private val handler:Handler
 
     constructor(processor:(PromiseCallback<T?>)->Unit):this(processor, jsHandler)
@@ -30,12 +36,8 @@ class Promise<T>: PromiseCallback<T?> {
         }
     }
 
-
-    enum class State{
-        Pending,
-        Resolved,
-        Rejected
-    }
+    //promise执行期间，暂停的回调
+    private val suspendCallback = HashSet<ICallback>()
 
     //标记promise状态
     private var state: State = State.Pending
@@ -130,16 +132,24 @@ class Promise<T>: PromiseCallback<T?> {
      * 在当前线程等待结果返回，请注意不要在js回调线程中等待，会阻塞线程
      * js层抛出的异常在await时会在native层抛出
      */
-    fun await():T{
+    fun await():T?{
         synchronized(lock){
             if(state== State.Pending){
                 lock.wait()
             }
             if(state== State.Resolved){
-                return thenResult!!
+                return thenResult
             }else{
                 throw catchResult?:Exception("")
             }
         }
+    }
+
+    fun suspendCallback(callback:ICallback){
+        suspendCallback.add(callback)
+    }
+
+    fun getSuspendCallback():HashSet<ICallback>{
+        return suspendCallback
     }
 }

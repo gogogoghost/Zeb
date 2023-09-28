@@ -1,5 +1,6 @@
 import { num2arr, concatArr, arr2num, arr2float, makeBuffer, randomString } from "./utils";
 import { Base64 } from 'js-base64'
+import { suspend, unsuspend, isSuspend } from "./suspend";
 
 // js请求native的数据类型
 const REQT = {
@@ -244,11 +245,35 @@ function decodeArg (bytes, throwErr = true) {
         case REST.BYTEARRAY:
             return body
         case REST.PROMISE:
-            const id = textDecoder.decode(body)
+            const id = textDecoder.decode(body.slice(0, 8))
+            let hasSuspend = false
+            //read more
+            let i = 8;
+            while (i < body.length) {
+                const magic = body[i]
+                i++
+                if ((magic & 0x10) != 0) {
+                    //suspend
+                    const token = textDecoder.decode(body.slice(i, i + 8))
+                    i += 8
+                    if ((magic & 0x01) != 0) {
+                        //object
+                        suspend(true, id, token)
+                        hasSuspend = true
+                    } else if ((magic & 0x02) != 0) {
+                        //callback
+                        suspend(false, id, token)
+                        hasSuspend = true
+                    }
+                } else {
+                    break
+                }
+            }
             return new Promise((resolve, reject) => {
                 promiseMap[id] = {
                     resolve,
-                    reject
+                    reject,
+                    hasSuspend
                 }
             })
         case REST.ARRAY:
@@ -336,6 +361,9 @@ async function processMessage (bytes, resCallback) {
             {
                 // 调用回调
                 const token = textDecoder.decode(body.slice(0, 8))
+                if (isSuspend(false, token)) {
+                    return
+                }
                 const func = functionMap[token]
                 if (func) {
                     const argsRaw = body.slice(8)
@@ -349,6 +377,9 @@ async function processMessage (bytes, resCallback) {
             {
                 //调用对象内的回调
                 const token = textDecoder.decode(body.slice(0, 8))
+                if (isSuspend(true, token)) {
+                    return
+                }
                 const obj = objectMap[token]
                 if (obj) {
                     const nameEnd = body.indexOf(0, 8)
@@ -389,6 +420,9 @@ async function processMessage (bytes, resCallback) {
                         promise.resolve(arg)
                     } else {
                         promise.reject(new Error(naviveErrorPrefix + arg))
+                    }
+                    if (promise.hasSuspend) {
+                        unsuspend(name)
                     }
                     delete promiseMap[name]
                 }

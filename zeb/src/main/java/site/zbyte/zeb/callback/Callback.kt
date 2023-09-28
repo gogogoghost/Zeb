@@ -10,13 +10,13 @@ import java.io.ByteArrayOutputStream
 class Callback(
     private val zeb: Zeb,
     private val functionToken: String
-) {
+):ICallback {
 
     /**
      * 调用该回调方法
      */
-    fun call(vararg args:Any?):Promise<Any?>{
-        val promise= Promise<Any?>{}
+    fun call(vararg args:Any?):Promise<Any>{
+        val promise= Promise<Any>{}
         zeb.appendResponse(object :Response{
             override fun encode():ByteArray {
                 val b=ByteArrayOutputStream()
@@ -42,5 +42,13 @@ class Callback(
                 return b.toByteArray()
             }
         })
+    }
+
+    override fun isObject(): Boolean {
+        return false
+    }
+
+    override fun getToken(): String {
+        return functionToken
     }
 }

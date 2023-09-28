@@ -65,7 +65,7 @@ class Zeb(private val src:WebView) {
     private val baseJsObject=SharedObject(baseService)
 
 //    native侧的promise存储
-    private val promiseMap=HashMap<String,Promise<Any?>>()
+    private val promiseMap=HashMap<String,Promise<Any>>()
 
     init {
         src.settings.javaScriptEnabled=true
@@ -161,9 +161,10 @@ class Zeb(private val src:WebView) {
                 src.evaluateJavascript("window.zebCall('${str}','${promiseId}')",null)
             }
         }
+
     }
 
-    fun savePromise(promise: Promise<Any?>){
+    fun savePromise(promise: Promise<Any>){
         promiseMap[promise.getId()]=promise
     }
 
@@ -256,6 +257,15 @@ class Zeb(private val src:WebView) {
                 }
                 b.write(REST.PROMISE.v.toByteArray())
                 b.write(arg.getId().toByteArray())
+                //添加suspend
+                arg.getSuspendCallback().forEach {
+                    b.write(if(it.isObject()){
+                        0x10 or 0x01
+                    }else{
+                        0x10 or 0x02
+                    })
+                    b.write(it.getToken().toByteArray())
+                }
             }
             //bytearray
             is ByteArray->{
@@ -294,7 +304,7 @@ class Zeb(private val src:WebView) {
                 b.write(arg.toStr().toByteArray())
             }
             else->{
-                throw Exception("Not support type to encode：$arg. If you need transfer a object, please use AcrossObject")
+                throw Exception("Not support type to encode：$arg. If you need transfer a object, please use SharedObject")
             }
         }
         return b

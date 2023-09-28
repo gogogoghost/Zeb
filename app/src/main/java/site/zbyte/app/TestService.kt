@@ -64,4 +64,44 @@ class TestService {
             it.resolve(res2)
         }
     }
+
+//    private var runningThread:Thread?=null
+    private var running=false
+    private val lock=Object()
+
+    private var cb:Callback?=null
+    @JavascriptInterface
+    fun startThread(interval:Long,callback:Callback){
+        cb=callback
+        running=true
+        Thread{
+            while(true){
+                synchronized(lock){
+                    if(!running){
+                        lock.notifyAll()
+                        return@Thread
+                    }
+                    callback.call().await()
+                }
+                Thread.sleep(interval)
+            }
+        }.also {
+            it.start()
+        }
+    }
+
+    @JavascriptInterface
+    fun stopThread():Promise<Any>{
+        return Promise<Any> {
+            synchronized(lock){
+                running=false
+                lock.wait()
+            }
+            it.resolve(null)
+        }.also {promise->
+            cb?.let {
+                promise.suspendCallback(it)
+            }
+        }
+    }
 }

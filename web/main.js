@@ -47,3 +47,13 @@ $('#testType').onclick = async () => {
         console.error("invoke error", e)
     }
 }
+$('#start').onclick = () => {
+    api.TestService.startThread(10, () => {
+        console.log('exec')
+    })
+}
+$('#stop').onclick = async () => {
+    console.log('stop start')
+    await api.TestService.stopThread()
+    console.log('stop end')
+}
