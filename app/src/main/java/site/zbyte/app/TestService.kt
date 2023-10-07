@@ -66,37 +66,45 @@ class TestService {
     }
 
 //    private var runningThread:Thread?=null
-    private var running=false
-    private val lock=Object()
+    private var thread:Thread?=null
 
-    private var cb:Callback?=null
+    private var cb:CallbackObject?=null
     @JavascriptInterface
-    fun startThread(interval:Long,callback:Callback){
-        cb=callback
-        running=true
-        Thread{
-            while(true){
-                synchronized(lock){
-                    if(!running){
-                        lock.notifyAll()
-                        return@Thread
-                    }
-                    callback.call().await()
-                }
-                Thread.sleep(interval)
+    fun startThread(interval:Long,timeout:Long,callback:CallbackObject){
+        synchronized(this){
+            if (thread?.isAlive==true){
+                throw Exception("cannot start twice")
             }
-        }.also {
-            it.start()
+            cb=callback
+            thread=Thread{
+                val st=System.currentTimeMillis()
+                while(true){
+                    synchronized(this@TestService){
+                        if(thread==null){
+                            return@Thread
+                        }
+                        callback.call("exec")
+                    }
+                    Thread.sleep(interval)
+                    if(System.currentTimeMillis()-st>=timeout){
+                        callback.call("timeout")
+                        break
+                    }
+                }
+            }.also {
+                it.start()
+            }
         }
     }
 
     @JavascriptInterface
     fun stopThread():Promise<Any>{
         return Promise<Any> {
-            synchronized(lock){
-                running=false
-                lock.wait()
-            }
+            synchronized(this){
+                thread?.also {
+                    thread=null
+                }
+            }?.join()
             it.resolve(null)
         }.also {promise->
             cb?.let {

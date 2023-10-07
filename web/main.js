@@ -48,8 +48,13 @@ $('#testType').onclick = async () => {
     }
 }
 $('#start').onclick = () => {
-    api.TestService.startThread(10, () => {
-        console.log('exec')
+    api.TestService.startThread(10, 3000, {
+        exec () {
+            console.log('exec')
+        },
+        timeout () {
+            console.warn('timeout')
+        }
     })
 }
 $('#stop').onclick = async () => {
