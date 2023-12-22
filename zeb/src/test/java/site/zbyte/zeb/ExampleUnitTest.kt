@@ -1,6 +1,7 @@
 package site.zbyte.zeb
 
 import org.junit.Test
+import site.zbyte.zeb.ws.WsServer
 
 import java.io.ByteArrayOutputStream
 
@@ -15,5 +16,10 @@ class ExampleUnitTest {
         val out=ByteArrayOutputStream()
         out.writeBytes(byteArrayOf(0x55,0x66,0x77,0x05))
         println(out.toByteArray().toStr())
+    }
+
+    @Test
+    fun testBytes(){
+        println(Long.MAX_VALUE.toInt())
     }
 }

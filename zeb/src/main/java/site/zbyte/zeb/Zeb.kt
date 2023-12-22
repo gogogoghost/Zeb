@@ -11,6 +11,7 @@ import site.zbyte.zeb.callback.CallbackObject
 import site.zbyte.zeb.callback.Promise
 import site.zbyte.zeb.callback.Response
 import site.zbyte.zeb.data.SharedObject
+import site.zbyte.zeb.ws.WsServer
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 
@@ -70,6 +71,9 @@ class Zeb(private val src:WebView) {
     init {
         src.settings.javaScriptEnabled=true
         src.addJavascriptInterface(this,"zeb")
+
+        val ws=WsServer(5000,"asdfg")
+        ws.start()
     }
 
     private fun encodeBase64(bytes:ByteArray):String{

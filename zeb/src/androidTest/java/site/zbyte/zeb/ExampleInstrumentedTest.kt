@@ -9,6 +9,7 @@ import org.junit.runner.RunWith
 
 import site.zbyte.zeb.callback.Promise
 import java.nio.ByteBuffer
+import java.security.MessageDigest
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -29,8 +30,12 @@ class ExampleInstrumentedTest {
 
     @Test
     fun decode(){
-        val str="MCwwLDAsMTcsMTAsMTAyLDUzLDUyLDEwNiw3MSw2Niw4Miw3Nyw4MCw4Miw4Miw3NSw1MCwxMTksMTAwLDEwNQ=="
-        println(Base64.decode(str,0).toStr())
+        val sec="dGhlIHNhbXBsZSBub25jZQ=="
+//        val raw=Base64.decode(sec,Base64.NO_WRAP)
+        val digest = MessageDigest.getInstance("SHA-1")
+        val hashedBytes = digest.digest(sec.toByteArray()+"258EAFA5-E914-47DA-95CA-C5AB0DC85B11".toByteArray())
+        val res= Base64.encodeToString(hashedBytes,Base64.NO_WRAP)
+        println(res)
     }
 
     @Test
