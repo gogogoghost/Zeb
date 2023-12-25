@@ -1,6 +1,7 @@
 package site.zbyte.zeb
 
 import android.annotation.SuppressLint
+import android.net.InetAddresses
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
@@ -11,12 +12,15 @@ import site.zbyte.zeb.callback.CallbackObject
 import site.zbyte.zeb.callback.Promise
 import site.zbyte.zeb.callback.Response
 import site.zbyte.zeb.data.SharedObject
+import site.zbyte.zeb.ws.WsListener
 import site.zbyte.zeb.ws.WsServer
 import java.io.ByteArrayOutputStream
+import java.io.OutputStream
+import java.lang.StringBuilder
 import java.nio.ByteBuffer
 
 @SuppressLint("SetJavaScriptEnabled")
-class Zeb(private val src:WebView) {
+class Zeb(private val src:WebView):WsListener {
 
     private val handler = Handler(Looper.getMainLooper())
 
@@ -68,12 +72,13 @@ class Zeb(private val src:WebView) {
 //    native侧的promise存储
     private val promiseMap=HashMap<String,Promise<Any>>()
 
+    private val zebAuth= randomString(16)
+    private val wsServer=WsServer(zebAuth,this)
+    private val zebPort=wsServer.start()
+
     init {
         src.settings.javaScriptEnabled=true
         src.addJavascriptInterface(this,"zeb")
-
-        val ws=WsServer(5000,"asdfg")
-        ws.start()
     }
 
     private fun encodeBase64(bytes:ByteArray):String{
@@ -91,66 +96,22 @@ class Zeb(private val src:WebView) {
         return this
     }
 
+    @JavascriptInterface
+    fun getAuth():String{
+        return zebAuth
+    }
+
+    @JavascriptInterface
+    fun getPort():String{
+        return "$zebPort"
+    }
+
     /**
      * 获取版本
      */
     @JavascriptInterface
     fun getVersion():String{
         return BuildConfig.version
-    }
-
-    /**
-     * 调用对象，id为null则为调用baseObject
-     */
-    @JavascriptInterface
-    fun callObject(id:String?,func:String,args:String):String{
-        return if(id==null){
-            callObjectInternal(baseJsObject,func, args)
-        }else if(acrossObj.containsKey(id)){
-            callObjectInternal(acrossObj[id]!!,func, args)
-        }else{
-            eArg(Exception("Object:${id} is not found"))
-        }
-    }
-
-    private fun callObjectInternal(obj:SharedObject, func:String, args:String):String{
-        return try{
-            eArg(obj.callMethod(
-                func,
-                dArr(args)
-            ))
-        }catch (e:Exception){
-            e.printStackTrace()
-            eArg(e)
-        }
-    }
-
-    @JavascriptInterface
-    fun readObject(id:String?,name:String):String{
-        return if(id==null){
-            readObjectInternal(baseJsObject,name)
-        }else if(acrossObj.containsKey(id)){
-            readObjectInternal(acrossObj[id]!!,name)
-        }else{
-            eArg(Exception("Object:${id} is not found"))
-        }
-    }
-
-    private fun readObjectInternal(obj:SharedObject, name:String):String{
-        return try{
-            eArg(obj.getField(name))
-        }catch (e:Exception){
-            e.printStackTrace()
-            eArg(e)
-        }
-    }
-
-    /**
-     * 释放匿名对象
-     */
-    @JavascriptInterface
-    fun releaseObject(id:String){
-        acrossObj.remove(id)
     }
 
     /**
@@ -170,22 +131,6 @@ class Zeb(private val src:WebView) {
 
     fun savePromise(promise: Promise<Any>){
         promiseMap[promise.getId()]=promise
-    }
-
-    /**
-     * js测完成回调后将数据响应
-     */
-    @JavascriptInterface
-    fun finalizePromise(token:String,args:String){
-        promiseMap[token]?.run {
-            val res = dArg(args)
-            if(res is Exception){
-                reject(res)
-            }else{
-                resolve(res)
-            }
-            promiseMap.remove(token)
-        }
     }
 
     /**
@@ -353,7 +298,7 @@ class Zeb(private val src:WebView) {
             }
             REQT.ARRAY.v->{
                 //数组
-                return decodeArray(body)
+                return decodeArray(ByteBuffer.wrap(body))
             }
             REQT.INT.v->{
                 return when(body.size){
@@ -397,8 +342,7 @@ class Zeb(private val src:WebView) {
      * 解码数组
      * 数组为：[(长度)+(body)]
      */
-    private fun decodeArray(byteArray: ByteArray):Array<Any?>{
-        val buffer=ByteBuffer.wrap(byteArray)
+    private fun decodeArray(buffer: ByteBuffer):Array<Any?>{
         val out=ArrayList<Any?>()
         while(buffer.remaining()>0){
             //获取长度
@@ -425,7 +369,118 @@ class Zeb(private val src:WebView) {
     private fun dArg(str:String):Any?{
         return decodeArg(decodeBase64(str))
     }
-    private fun dArr(str:String):Array<Any?>{
-        return decodeArray(decodeBase64(str))
+
+    private var wsOutput:OutputStream?=null
+
+    override fun onConnect(output: OutputStream) {
+        wsOutput=output
+    }
+
+    override fun onDisconnect() {
+        wsOutput=null
+    }
+
+    /**
+     * 调用对象，id为空则为调用baseObject
+     */
+    private fun callObject(id:String,func:String,args:ByteBuffer):String{
+        return if(id.isEmpty()){
+            callObjectInternal(baseJsObject,func, args)
+        }else if(acrossObj.containsKey(id)){
+            callObjectInternal(acrossObj[id]!!,func, args)
+        }else{
+            eArg(Exception("Object:${id} is not found"))
+        }
+    }
+
+    private fun callObjectInternal(obj:SharedObject, func:String, args:ByteBuffer):String{
+        return try{
+            eArg(obj.callMethod(
+                func,
+                decodeArray(args)
+            ))
+        }catch (e:Exception){
+            e.printStackTrace()
+            eArg(e)
+        }
+    }
+
+    private fun readObject(id:String,name:String):String{
+        return if(id.isEmpty()){
+            readObjectInternal(baseJsObject,name)
+        }else if(acrossObj.containsKey(id)){
+            readObjectInternal(acrossObj[id]!!,name)
+        }else{
+            eArg(Exception("Object:${id} is not found"))
+        }
+    }
+
+    private fun readObjectInternal(obj:SharedObject, name:String):String{
+        return try{
+            eArg(obj.getField(name))
+        }catch (e:Exception){
+            e.printStackTrace()
+            eArg(e)
+        }
+    }
+
+    private fun releaseObject(id:String){
+        acrossObj.remove(id)
+    }
+
+    private fun finalizePromise(token:String,data:ByteArray){
+        promiseMap[token]?.run {
+            val res = decodeArg(data)
+            if(res is Exception){
+                reject(res)
+            }else{
+                resolve(res)
+            }
+            promiseMap.remove(token)
+        }
+    }
+
+    override fun onMessage(data: ByteArray) {
+        val buffer=ByteBuffer.wrap(data)
+        when(buffer.get()){
+            0x01.toByte()->{
+                //callObject
+                val id=buffer.readString()
+                val funcName=buffer.readString()
+                callObject(id,funcName,buffer)
+            }
+            0x02.toByte()->{
+                //readObject
+                val id=buffer.readString()
+                val fieldName=buffer.readString()
+                readObject(id,fieldName)
+            }
+            0x03.toByte()->{
+                //releaseObject
+                val id=buffer.readString()
+                releaseObject(id)
+            }
+            0x04.toByte()->{
+                //finalizePromise
+                val token=buffer.readString()
+                finalizePromise(token,buffer.remainingArray())
+            }
+        }
+    }
+
+    private fun ByteBuffer.readString():String{
+        val sb=StringBuilder()
+        while(true){
+            val ch=this.char
+            if(ch.code ==0){
+                return sb.toString()
+            }
+            sb.append(ch)
+        }
+    }
+    private fun ByteBuffer.remainingArray():ByteArray{
+        val arr=ByteArray(this.remaining())
+        this.get(arr)
+        return arr
     }
 }

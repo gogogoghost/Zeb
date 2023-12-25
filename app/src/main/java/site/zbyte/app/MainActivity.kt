@@ -44,6 +44,6 @@ class MainActivity : AppCompatActivity() {
         webViewSettings.allowFileAccess=false
         webViewSettings.allowContentAccess=false
 
-        src.loadUrl("http://192.168.0.199:3000")
+        src.loadUrl("http://10.0.0.156:3000")
     }
 }

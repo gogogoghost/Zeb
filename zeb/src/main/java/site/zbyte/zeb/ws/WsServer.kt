@@ -13,32 +13,34 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
+import java.nio.channels.Selector
 import java.security.MessageDigest
 import kotlin.experimental.and
 import kotlin.experimental.xor
 
-class WsServer(private val port:Int,private val auth:String) {
+class WsServer(private val auth:String,private val listener: WsListener) {
+
+    companion object{
+        private const val TAG="WsServer"
+        private const val magic="258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+    }
 
     private var runningThread:Thread?=null
     private var serverRunning=false
 
-    private val magic="258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-
-    private val TAG="WsServer"
-
     @Synchronized
-    fun start(){
+    fun start():Int{
         if(serverRunning||runningThread?.isAlive==true){
             throw Exception("Please stop first")
         }
         serverRunning=true
+        val serverAddress = InetSocketAddress(
+            if(BuildConfig.DEBUG) "0.0.0.0" else "127.0.0.1",
+            0
+        )
+        val socket=ServerSocket()
+        socket.bind(serverAddress)
         runningThread=Thread{
-            val serverAddress = InetSocketAddress(
-                if(BuildConfig.DEBUG) "0.0.0.0" else "127.0.0.1",
-                port
-            )
-            val socket=ServerSocket()
-            socket.bind(serverAddress)
             socket.soTimeout=3
             while(serverRunning){
                 val conn=try{
@@ -55,17 +57,30 @@ class WsServer(private val port:Int,private val auth:String) {
                     try{
                         conn.close()
                     }catch (_:Exception){}
+                    listener.onDisconnect()
                 }
             }
+            //清理现场
+            try {
+                socket.close()
+            }catch (_:Exception){}
         }.also {
             it.start()
         }
+        return socket.localPort
+    }
+
+    @Synchronized
+    fun stop(){
+        serverRunning=false
+        runningThread?.join()
+        runningThread=null
     }
 
     private fun processConn(conn:Socket){
         val input=conn.getInputStream()
         val output=conn.getOutputStream()
-        //连接完成 接收第一行数据
+        //连接完成 接收请求行
         val reqLine=readLine(input)
         checkReqLine(reqLine)
         //读取头部
@@ -75,11 +90,12 @@ class WsServer(private val port:Int,private val auth:String) {
         val acceptStr=genAccept(sec)
         //发送接受请求
         sendAccept(acceptStr,output)
-        //开始畅快通信
+        //连接完成
+        listener.onConnect(output)
+        //启动接收数据循环
         while (true){
             val frame=readFrame(input)
-            println(frame.size)
-            println(String(frame))
+            listener.onMessage(frame)
         }
     }
 
@@ -97,7 +113,6 @@ class WsServer(private val port:Int,private val auth:String) {
                 //不允许分片
                 0x00.toByte()->{
                     //分片帧
-                    println("分片")
                 }
                 0x01.toByte()->{
                     //文本帧 测试专用
@@ -116,7 +131,6 @@ class WsServer(private val port:Int,private val auth:String) {
             val b2=input.readByte()
             val mask=b2.and(0x80.toByte())!=0.toByte()
             var length=b2.and(0x7f.toByte()).toInt().and(0xff)
-            Log.d(TAG,"length $length")
             if(length==126){
                 length= ByteBuffer.wrap(input.readBytes(2)).short.toInt().and(0xffff)
             }else if(length==127){
@@ -126,7 +140,6 @@ class WsServer(private val port:Int,private val auth:String) {
                 }
                 length= tmp.toInt()
             }
-            Log.d(TAG,"mask $mask length $length")
             val data=if(mask){
                 val maskBytes=input.readBytes(4)
                 val data=input.readBytes(length)
