@@ -1,4 +1,4 @@
-package site.zbyte.zeb
+package site.zbyte.zeb.common
 
 import java.nio.ByteBuffer
 import java.util.*
@@ -7,10 +7,10 @@ import java.util.*
 /**
  * 随机字符串
  */
-fun randomString(length:Int):String{
-    val str="ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
-    return (1..length).map { str.random() }.joinToString("")
-}
+//fun randomString(length:Int):String{
+//    val str="ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
+//    return (1..length).map { str.random() }.joinToString("")
+//}
 
 fun Byte.toByteArray():ByteArray{
     return byteArrayOf(this)
@@ -22,15 +22,9 @@ fun Int.toByteArray():ByteArray{
         .array()
 }
 
-fun Long.toByteArray():ByteArray{
+fun Long.toByteArray():ByteArray {
     return ByteBuffer.allocate(8)
         .putLong(this)
-        .array()
-}
-
-fun Float.toByteArray():ByteArray{
-    return ByteBuffer.allocate(4)
-        .putFloat(this)
         .array()
 }
 

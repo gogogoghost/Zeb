@@ -1,7 +1,7 @@
 package site.zbyte.zeb.callback
 
 import site.zbyte.zeb.Zeb
-import site.zbyte.zeb.toByteArray
+import site.zbyte.zeb.common.toByteArray
 import java.io.ByteArrayOutputStream
 
 /**
@@ -9,7 +9,7 @@ import java.io.ByteArrayOutputStream
  */
 class Callback(
     private val zeb: Zeb,
-    private val functionToken: String
+    private val id: Long
 ):ICallback {
 
     /**
@@ -21,14 +21,16 @@ class Callback(
             override fun encode():ByteArray {
                 val b=ByteArrayOutputStream()
                 //1
-                b.write(Response.REST.CALLBACK.v.toByteArray())
-                //8
-                b.write(functionToken.toByteArray())
+                b.write(Zeb.MsgType.CALLBACK.toInt())
+                //8 function
+                b.write(id.toByteArray())
+                //8 promise id
+                b.write(promise.getId().toByteArray())
                 //args
                 zeb.encodeArray(args,b)
                 return b.toByteArray()
             }
-        },promise.getId())
+        })
         zeb.savePromise(promise)
         return promise
     }
@@ -37,8 +39,8 @@ class Callback(
         zeb.appendResponse(object :Response{
             override fun encode(): ByteArray {
                 val b=ByteArrayOutputStream()
-                b.write(Response.REST.RELEASE_CALLBACK.v.toByteArray())
-                b.write(functionToken.toByteArray())
+                b.write(Zeb.MsgType.RELEASE_CALLBACK.toInt())
+                b.write(id.toByteArray())
                 return b.toByteArray()
             }
         })
@@ -48,7 +50,7 @@ class Callback(
         return false
     }
 
-    override fun getToken(): String {
-        return functionToken
+    override fun getId():Long {
+        return id
     }
 }

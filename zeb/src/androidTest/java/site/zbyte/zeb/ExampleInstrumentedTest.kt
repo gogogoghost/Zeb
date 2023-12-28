@@ -8,6 +8,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 import site.zbyte.zeb.callback.Promise
+import site.zbyte.zeb.common.toStr
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 

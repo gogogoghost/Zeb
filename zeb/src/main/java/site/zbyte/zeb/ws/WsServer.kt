@@ -3,6 +3,7 @@ package site.zbyte.zeb.ws
 import android.util.Base64
 import android.util.Log
 import site.zbyte.zeb.BuildConfig
+import site.zbyte.zeb.common.toByteArray
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -13,7 +14,6 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
-import java.nio.channels.Selector
 import java.security.MessageDigest
 import kotlin.experimental.and
 import kotlin.experimental.xor
@@ -34,10 +34,17 @@ class WsServer(private val auth:String,private val listener: WsListener) {
             throw Exception("Please stop first")
         }
         serverRunning=true
-        val serverAddress = InetSocketAddress(
-            if(BuildConfig.DEBUG) "0.0.0.0" else "127.0.0.1",
-            0
-        )
+        val serverAddress = if(BuildConfig.DEBUG){
+            InetSocketAddress(
+                "0.0.0.0",
+                5000
+            )
+        }else{
+            InetSocketAddress(
+                "127.0.0.1",
+                0
+            )
+        }
         val socket=ServerSocket()
         socket.bind(serverAddress)
         runningThread=Thread{
@@ -51,7 +58,7 @@ class WsServer(private val auth:String,private val listener: WsListener) {
                 try{
                     processConn(conn)
                 }catch (e:Exception){
-                    e.printStackTrace()
+                    Log.w(TAG,e)
                 }finally {
                     //关闭连接
                     try{
@@ -91,12 +98,42 @@ class WsServer(private val auth:String,private val listener: WsListener) {
         //发送接受请求
         sendAccept(acceptStr,output)
         //连接完成
-        listener.onConnect(output)
+        val sender=object :IFrameSender{
+            override fun send(msg: ByteArray) {
+                try{
+                    sendFrame(msg,output)
+                }catch (e:Exception){
+                    Log.w(TAG,e)
+                }
+            }
+        }
+        listener.onConnect(sender)
         //启动接收数据循环
         while (true){
             val frame=readFrame(input)
+//            sender.send(frame)
             listener.onMessage(frame)
         }
+    }
+
+    private fun sendFrame(frame:ByteArray,output: OutputStream){
+        //1 字符
+        //2 字节
+        output.write(0x82)
+        if(frame.size<=125){
+            //单字节表示
+            output.write(frame.size)
+        }else if(frame.size<=0xffff){
+            //2字节表示
+            output.write(126)
+            output.write(frame.size.toByteArray().sliceArray(2..3))
+        }else{
+            //8字节
+            output.write(127)
+            output.write(frame.size.toLong().toByteArray())
+        }
+        output.write(frame)
+        output.flush()
     }
 
     private fun readFrame(input:InputStream):ByteArray{
@@ -110,7 +147,6 @@ class WsServer(private val auth:String,private val listener: WsListener) {
                 throw Exception("Bad Protocol:1")
             }
             when(b1.and(0x0f)){
-                //不允许分片
                 0x00.toByte()->{
                     //分片帧
                 }

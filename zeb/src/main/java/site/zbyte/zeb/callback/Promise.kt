@@ -2,7 +2,7 @@ package site.zbyte.zeb.callback
 
 import android.os.Handler
 import android.os.HandlerThread
-import site.zbyte.zeb.randomString
+import site.zbyte.zeb.common.IdGenerator
 
 class Promise<T>: PromiseCallback<T?> {
 
@@ -53,7 +53,7 @@ class Promise<T>: PromiseCallback<T?> {
     private var catchResult:Exception?=null
 
     //随机生成promise id
-    private val id = randomString(8)
+    private val id = IdGenerator.nextId()
 
     //锁
     private val lock = Object()
@@ -94,7 +94,7 @@ class Promise<T>: PromiseCallback<T?> {
     }
 
     //获取该promiseID
-    fun getId():String{
+    fun getId():Long{
         return id
     }
 

@@ -84,3 +84,13 @@ export function randomString(e) {
     for (let i = 0; i < e; i++) n += t.charAt(Math.floor(Math.random() * a));
     return n
 }
+
+let currentId=0
+//获取ID
+export function nextId(){
+    currentId++
+    if(currentId>=Number.MAX_SAFE_INTEGER){
+        currentId=1
+    }
+    return currentId
+}

@@ -1,7 +1,7 @@
 package site.zbyte.zeb
 
 import org.junit.Test
-import site.zbyte.zeb.ws.WsServer
+import site.zbyte.zeb.common.toStr
 
 import java.io.ByteArrayOutputStream
 

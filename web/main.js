@@ -1,4 +1,6 @@
-import { api } from './lib/zeb'
+import { connect } from './lib/zeb'
+
+const res=await connect()
 
 function $ () {
     return document.querySelector(...arguments)
