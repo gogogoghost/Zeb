@@ -387,24 +387,32 @@ class Zeb(private val src:WebView):WsListener {
         }
     }
 
-//    private fun readObject(id:Long,name:String):ByteArray{
-//        return if(id==0L){
-//            readObjectInternal(baseJsObject,name)
-//        }else if(acrossObj.containsKey(id)){
-//            readObjectInternal(acrossObj[id]!!,name)
-//        }else{
-//            eArg(Exception("Object:${id} is not found"))
-//        }
-//    }
-//
-//    private fun readObjectInternal(obj:SharedObject, name:String):ByteArray{
-//        return try{
-//            eArg(obj.getField(name))
-//        }catch (e:Exception){
-//            e.printStackTrace()
-//            eArg(e)
-//        }
-//    }
+    private fun readObject(promiseId:Long,id:Long,name:String){
+        if(id==0L){
+            readObjectInternal(promiseId,baseJsObject,name)
+        }else if(acrossObj.containsKey(id)){
+            readObjectInternal(promiseId,acrossObj[id]!!,name)
+        }else{
+            sendPromiseFinalize(
+                promiseId,
+                false,
+                Exception("Object:${id} is not found")
+            )
+        }
+    }
+
+    private fun readObjectInternal(promiseId:Long,obj:SharedObject, name:String){
+        try{
+            sendPromiseFinalize(
+                promiseId,
+                true,
+                obj.getField(name)
+            )
+        }catch (e:Exception){
+            e.printStackTrace()
+            sendPromiseFinalize(promiseId,false,e)
+        }
+    }
 
     private fun releaseObject(id:Long){
         acrossObj.remove(id)
@@ -427,20 +435,20 @@ class Zeb(private val src:WebView):WsListener {
         when(buffer.get()){
             MsgType.CALL_OBJECT->{
                 //callObject
-                val callId=buffer.long
+                val promiseId=buffer.long
                 val objId=buffer.long
                 val funcName=buffer.readString()
                 handler.post{
-                    callObject(callId,objId,funcName,buffer)
+                    callObject(promiseId,objId,funcName,buffer)
                 }
             }
-//            MsgType.READ_OBJECT->{
-//                //readObject
-//                val callId=buffer.long
-//                val objectId=buffer.long
-//                val fieldName=buffer.readString()
-//                readObject(id,fieldName)
-//            }
+            MsgType.READ_OBJECT->{
+                //readObject
+                val promiseId=buffer.long
+                val objectId=buffer.long
+                val fieldName=buffer.readString()
+                readObject(promiseId,objectId,fieldName)
+            }
             MsgType.RELEASE_OBJECT->{
                 //releaseObject
                 val id=buffer.long

@@ -7,15 +7,15 @@ function $ () {
     return document.querySelector(...arguments)
 }
 
-$('#getAge').onclick = () => {
-    console.log(api.TestService.age)
+$('#getAge').onclick = async () => {
+    console.log(await api.TestService.age.get())
 }
-$('#addAge').onclick = () => {
-    console.log(api.TestService.ageAdd())
+$('#addAge').onclick = async () => {
+    console.log(await api.TestService.ageAdd())
 }
-$('#callObj').onclick = () => {
-    const obj = api.TestService.getInnerObject()
-    console.log(obj.innerFunction())
+$('#callObj').onclick = async () => {
+    const obj = await api.TestService.getInnerObject()
+    console.log(await obj.innerFunction())
 }
 
 async function complexCall () {
@@ -25,7 +25,7 @@ async function complexCall () {
         -10.24,
         "Hello world",
         false,
-        new Uint8Array([0x5f, 0x68]),
+        new Uint8Array([0x5f, 0x68]).buffer,
         null,
         { name: 'Jack', age: 18 },
         [
@@ -53,8 +53,8 @@ $('#testType').onclick = async () => {
     await complexCall()
     console.log("time:", new Date().getTime() - window.start)
 }
-$('#start').onclick = () => {
-    api.TestService.startThread(10, 3000, {
+$('#start').onclick = async () => {
+    await api.TestService.startThread(10, 3000, {
         exec () {
             console.log('exec')
         },

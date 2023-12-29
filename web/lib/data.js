@@ -3,6 +3,7 @@ import { nextId } from "./utils"
 import { functionMap, promiseMap, objectMap } from './store'
 import { createObject } from "./proxy"
 import { DataType, MsgType } from "./constant"
+import { send } from "./ws"
 
 // Native error prefix
 const naviveErrorPrefix = "Native exception:"
@@ -15,7 +16,7 @@ if (window.FinalizationRegistry) {
     buffer.writeByte(MsgType.RELEASE_OBJECT)
     buffer.writeLong(id)
     buffer.flip()
-    client.send(buffer.toArrayBuffer())
+    send(buffer.toArrayBuffer())
   })
 } else {
   console.warn("Not support FinalizationRegistry. Js object receive from native will be not released.")
@@ -97,6 +98,10 @@ export function encodeArg (arg, buffer = new ByteBuffer()) {
   } else if (c == Uint8Array) {
     buffer.writeByte(DataType.BYTEARRAY)
     buffer.writeInt(arg.length)
+    buffer.append(arg)
+  } else if (c == ArrayBuffer) {
+    buffer.writeByte(DataType.BYTEARRAY)
+    buffer.writeInt(arg.byteLength)
     buffer.append(arg)
   } else if (c == Array) {
     buffer.writeByte(DataType.ARRAY)
