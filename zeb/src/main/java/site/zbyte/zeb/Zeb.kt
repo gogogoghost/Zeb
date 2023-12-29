@@ -447,7 +447,9 @@ class Zeb(private val src:WebView):WsListener {
                 val promiseId=buffer.long
                 val objectId=buffer.long
                 val fieldName=buffer.readString()
-                readObject(promiseId,objectId,fieldName)
+                handler.post{
+                    readObject(promiseId,objectId,fieldName)
+                }
             }
             MsgType.RELEASE_OBJECT->{
                 //releaseObject
