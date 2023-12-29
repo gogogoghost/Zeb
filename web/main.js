@@ -49,9 +49,9 @@ async function complexCall () {
 }
 
 $('#testType').onclick = async () => {
-    const start = new Date().getTime()
+    window.start = new Date().getTime()
     await complexCall()
-    console.log("time:", new Date().getTime() - start)
+    console.log("time:", new Date().getTime() - window.start)
 }
 $('#start').onclick = () => {
     api.TestService.startThread(10, 3000, {

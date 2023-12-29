@@ -122,20 +122,23 @@ class WsServer(private val auth:String,private val listener: WsListener) {
     private fun sendFrame(frame:ByteArray,output: OutputStream){
         //1 字符
         //2 字节
-        output.write(0x82)
+        val buffer=ByteArrayOutputStream()
+        buffer.write(0x82)
         if(frame.size<=125){
             //单字节表示
-            output.write(frame.size)
+            buffer.write(frame.size)
         }else if(frame.size<=0xffff){
             //2字节表示
-            output.write(126)
-            output.write(frame.size.toByteArray().sliceArray(2..3))
+            buffer.write(126)
+            buffer.write(frame.size.toByteArray().sliceArray(2..3))
         }else{
             //8字节
-            output.write(127)
-            output.write(frame.size.toLong().toByteArray())
+            buffer.write(127)
+            buffer.write(frame.size.toLong().toByteArray())
         }
-        output.write(frame)
+        buffer.write(frame)
+        //缓冲区一次写入
+        output.write(buffer.toByteArray())
         output.flush()
     }
 

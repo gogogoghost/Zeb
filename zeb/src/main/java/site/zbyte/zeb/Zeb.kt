@@ -268,7 +268,6 @@ class Zeb(private val src:WebView):WsListener {
      */
     private fun decodeArg(buffer: ByteBuffer):Any?{
         val type=buffer.get()
-        println("type $type ${buffer.position()}")
         return when(type){
             DataType.FUNCTION->{
                 //方法回调
@@ -327,7 +326,6 @@ class Zeb(private val src:WebView):WsListener {
     private fun decodeArray(buffer: ByteBuffer):Array<Any?>{
         val len=buffer.int
         val out=ArrayList<Any?>()
-        println("len:$len")
         for(i in 0 until len){
             out.add(decodeArg(buffer))
         }
@@ -412,9 +410,9 @@ class Zeb(private val src:WebView):WsListener {
         acrossObj.remove(id)
     }
 
-    private fun finalizePromise(id:Long,data:ByteArray){
+    private fun finalizePromise(id:Long,buffer: ByteBuffer){
         promiseMap[id]?.run {
-            val res = decodeArg(ByteBuffer.wrap(data))
+            val res = decodeArg(buffer)
             if(res is Exception){
                 reject(res)
             }else{
@@ -425,7 +423,6 @@ class Zeb(private val src:WebView):WsListener {
     }
 
     override fun onMessage(data: ByteArray) {
-        println(data.toStr())
         val buffer=ByteBuffer.wrap(data)
         when(buffer.get()){
             MsgType.CALL_OBJECT->{
@@ -433,7 +430,6 @@ class Zeb(private val src:WebView):WsListener {
                 val callId=buffer.long
                 val objId=buffer.long
                 val funcName=buffer.readString()
-                println("$callId $objId $funcName")
                 handler.post{
                     callObject(callId,objId,funcName,buffer)
                 }
@@ -452,8 +448,8 @@ class Zeb(private val src:WebView):WsListener {
             }
             MsgType.PROMISE_FINISH->{
                 //finalizePromise
-                val token=buffer.long
-                finalizePromise(token,buffer.remainingArray())
+                val id=buffer.long
+                finalizePromise(id,buffer)
             }
         }
     }
@@ -478,10 +474,5 @@ class Zeb(private val src:WebView):WsListener {
         }
         this.position(this.position()+1)
         return res
-    }
-    private fun ByteBuffer.remainingArray():ByteArray{
-        val arr=ByteArray(this.remaining())
-        this.get(arr)
-        return arr
     }
 }
