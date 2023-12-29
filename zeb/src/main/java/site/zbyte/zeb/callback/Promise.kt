@@ -37,7 +37,7 @@ class Promise<T>: PromiseCallback<T?> {
     }
 
     //promise执行期间，暂停的回调
-    private val suspendCallback = HashSet<ICallback>()
+//    private val suspendCallback = HashSet<ICallback>()
 
     //标记promise状态
     private var state: State = State.Pending
@@ -143,13 +143,5 @@ class Promise<T>: PromiseCallback<T?> {
                 throw catchResult?:Exception("")
             }
         }
-    }
-
-    fun suspendCallback(callback:ICallback){
-        suspendCallback.add(callback)
-    }
-
-    fun getSuspendCallback():HashSet<ICallback>{
-        return suspendCallback
     }
 }

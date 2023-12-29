@@ -22,8 +22,7 @@ class BaseService {
     fun onAdd(name:String,obj: SharedObject){
         synchronized(this){
             //保存一下
-            globalServiceCallback.add(name)
-            globalServiceCallback.add(obj)
+            globalServiceCallback.add(arrayOf(name,obj))
             //如果有回调 回调一下
             if(callbackObj!=null){
                 callbackObj!!.call(name,obj)

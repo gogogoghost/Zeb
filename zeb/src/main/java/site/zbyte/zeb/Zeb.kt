@@ -1,6 +1,8 @@
 package site.zbyte.zeb
 
 import android.annotation.SuppressLint
+import android.os.Handler
+import android.os.HandlerThread
 import android.webkit.*
 import org.json.JSONObject
 import site.zbyte.zeb.callback.Callback
@@ -17,6 +19,7 @@ import site.zbyte.zeb.ws.WsServer
 import java.io.ByteArrayOutputStream
 import java.lang.StringBuilder
 import java.nio.ByteBuffer
+import kotlin.experimental.and
 
 @SuppressLint("SetJavaScriptEnabled")
 class Zeb(private val src:WebView):WsListener {
@@ -69,6 +72,11 @@ class Zeb(private val src:WebView):WsListener {
     private val wsServer=WsServer(zebAuth,this)
     private val zebPort=wsServer.start()
 
+    private val handlerThread= HandlerThread("ws").also {
+        it.start()
+    }
+    private val handler= Handler(handlerThread.looper)
+
     init {
         src.settings.javaScriptEnabled=true
         src.addJavascriptInterface(this,"zeb")
@@ -115,7 +123,7 @@ class Zeb(private val src:WebView):WsListener {
     /**
      * 编码一个对象返回(类型)+(body)
      */
-    fun encodeArg(arg:Any?, b:ByteArrayOutputStream=ByteArrayOutputStream()):ByteArrayOutputStream{
+    private fun encodeArg(arg:Any?, b:ByteArrayOutputStream=ByteArrayOutputStream()):ByteArrayOutputStream{
         when(arg){
             null->{
                 b.write(DataType.NULL.toInt())
@@ -126,7 +134,7 @@ class Zeb(private val src:WebView):WsListener {
                 b.write(arg.toByteArray())
             }
             is Long->{
-                b.write(DataType.INT.toInt())
+                b.write(DataType.LONG.toInt())
                 b.write(arg.toByteArray())
             }
             is Float->{
@@ -260,7 +268,7 @@ class Zeb(private val src:WebView):WsListener {
      */
     private fun decodeArg(buffer: ByteBuffer):Any?{
         val type=buffer.get()
-        println("type $type")
+        println("type $type ${buffer.position()}")
         return when(type){
             DataType.FUNCTION->{
                 //方法回调
@@ -352,11 +360,11 @@ class Zeb(private val src:WebView):WsListener {
     /**
      * 调用对象，id为空则为调用baseObject
      */
-    private fun callObject(promiseId:Long,id:Long,func:String,args:Array<Any?>){
+    private fun callObject(promiseId:Long,id:Long,func:String,buffer:ByteBuffer){
         if(id==0L){
-            callObjectInternal(promiseId,baseJsObject,func, args)
+            callObjectInternal(promiseId,baseJsObject,func, buffer)
         }else if(acrossObj.containsKey(id)){
-            callObjectInternal(promiseId,acrossObj[id]!!,func, args)
+            callObjectInternal(promiseId,acrossObj[id]!!,func, buffer)
         }else{
             sendPromiseFinalize(
                 promiseId,
@@ -366,14 +374,14 @@ class Zeb(private val src:WebView):WsListener {
         }
     }
 
-    private fun callObjectInternal(promiseId: Long,obj:SharedObject, func:String, args:Array<Any?>){
+    private fun callObjectInternal(promiseId: Long,obj:SharedObject, func:String, buffer:ByteBuffer){
         try{
             sendPromiseFinalize(
                 promiseId,
                 true,
                 obj.callMethod(
                     func,
-                    args
+                    decodeArray(buffer)
                 ))
         }catch (e:Exception){
             e.printStackTrace()
@@ -426,7 +434,9 @@ class Zeb(private val src:WebView):WsListener {
                 val objId=buffer.long
                 val funcName=buffer.readString()
                 println("$callId $objId $funcName")
-                callObject(callId,objId,funcName,decodeArray(buffer))
+                handler.post{
+                    callObject(callId,objId,funcName,buffer)
+                }
             }
 //            MsgType.READ_OBJECT->{
 //                //readObject

@@ -47,22 +47,19 @@ class TestService {
         aArr:Array<Any?>,
         cb: Callback,
         obj: CallbackObject,
-    ):Promise<Any?>{
-        return Promise{
-            val res=cb.call(
-                aInt,
-                aLong,
-                aFloat,
-                aStr,
-                aBool,
-                bytes,
-                nil,
-                json,
-                aArr
-            ).await()
-            val res2=obj.call("done",res).await()
-            it.resolve(res2)
-        }
+    ):Any?{
+        val res=cb.call(
+            aInt,
+            aLong,
+            aFloat,
+            aStr,
+            aBool,
+            bytes,
+            nil,
+            json,
+            aArr
+        ).await()
+        return obj.call("done",res).await()
     }
 
 //    private var runningThread:Thread?=null
@@ -98,18 +95,11 @@ class TestService {
     }
 
     @JavascriptInterface
-    fun stopThread():Promise<Any>{
-        return Promise<Any> {
-            synchronized(this){
-                thread?.also {
-                    thread=null
-                }
-            }?.join()
-            it.resolve(null)
-        }.also {promise->
-            cb?.let {
-                promise.suspendCallback(it)
+    fun stopThread(){
+        synchronized(this){
+            thread?.also {
+                thread=null
             }
-        }
+        }?.join()
     }
 }
