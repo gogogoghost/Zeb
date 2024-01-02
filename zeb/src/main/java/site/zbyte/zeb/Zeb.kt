@@ -145,8 +145,8 @@ class Zeb(private val src:WebView):WsListener {
             //string
             is String->{
                 b.write(DataType.STRING.toInt())
+                b.write(arg.length.toByteArray())
                 b.write(arg.toByteArray())
-                b.write(0)
             }
             //boolean
             is Boolean->{
@@ -194,8 +194,10 @@ class Zeb(private val src:WebView):WsListener {
             //exception
             is Exception->{
                 b.write(DataType.ERROR.toInt())
-                b.write(arg.toStr().toByteArray())
-                b.write(0)
+                arg.toStr().let {
+                    b.write(it.length.toByteArray())
+                    b.write(it.toByteArray())
+                }
             }
             else->{
                 throw Exception("Not support type to encode：$arg. If you need transfer a object, please use SharedObject")
@@ -251,7 +253,7 @@ class Zeb(private val src:WebView):WsListener {
                 buffer.double
             }
             DataType.STRING->{
-                buffer.readString()
+                buffer.readString(buffer.getInt())
             }
             DataType.NULL->{
                 null
@@ -263,7 +265,7 @@ class Zeb(private val src:WebView):WsListener {
                 return JSONObject(buffer.readString())
             }
             DataType.ERROR->{
-                return Exception(buffer.readString())
+                return Exception(buffer.readString(buffer.getInt()))
             }
             else->{
                 //其他情况 非法

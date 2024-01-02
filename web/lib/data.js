@@ -77,7 +77,8 @@ export function encodeArg (arg, buffer = new ByteBuffer()) {
     }
   } else if (c == String) {
     buffer.writeByte(DataType.STRING)
-    buffer.writeCString(arg)
+    buffer.writeInt(arg.length)
+    buffer.writeString(arg)
   } else if (c == Function) {
     const id = nextId()
     functionMap[id] = arg
@@ -111,7 +112,9 @@ export function encodeArg (arg, buffer = new ByteBuffer()) {
     buffer.writeByte(arg ? 1 : 0)
   } else if (c == Error) {
     buffer.writeByte(DataType.ERROR)
-    buffer.writeCString(arg.toStr())
+    const str = arg.toStr()
+    buffer.writeInt(str.length)
+    buffer.writeString(str)
   } else {
     throw new Error("Not support type to encode:" + arg)
   }
@@ -134,7 +137,7 @@ export function decodeArg (buffer, throwErr = true) {
   const t = buffer.readByte()
   switch (t) {
     case DataType.ERROR:
-      const err = new Error(naviveErrorPrefix + buffer.readCString())
+      const err = new Error(naviveErrorPrefix + buffer.readString(buffer.readInt()))
       if (throwErr) {
         throw err
       } else {
@@ -143,7 +146,7 @@ export function decodeArg (buffer, throwErr = true) {
     case DataType.NULL:
       return null
     case DataType.STRING:
-      return buffer.readCString()
+      return buffer.readString(buffer.readInt())
     case DataType.INT:
       return buffer.readInt()
     case DataType.LONG:

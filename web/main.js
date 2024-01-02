@@ -23,7 +23,7 @@ async function complexCall () {
         0xff,
         0x5555555555,
         -10.24,
-        "Hello world",
+        "Hell\0world",
         false,
         new Uint8Array([0x5f, 0x68]).buffer,
         null,
