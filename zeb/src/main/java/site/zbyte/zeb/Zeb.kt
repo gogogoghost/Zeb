@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Base64
+import android.util.Log
 import android.webkit.*
 import org.json.JSONObject
 import site.zbyte.zeb.callback.Callback
@@ -23,6 +24,10 @@ import kotlin.random.Random
 
 @SuppressLint("SetJavaScriptEnabled")
 class Zeb(private val src:WebView):WsListener {
+
+    companion object{
+        const val TAG="Zeb"
+    }
 
     object MsgType{
         const val CALLBACK:Byte=1
@@ -295,6 +300,7 @@ class Zeb(private val src:WebView):WsListener {
     }
 
     override fun onDisconnect() {
+        Log.w(TAG,"Connection closed")
         frameSender=null
     }
 

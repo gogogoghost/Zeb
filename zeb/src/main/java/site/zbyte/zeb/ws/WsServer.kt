@@ -62,19 +62,7 @@ class WsServer(private val auth:String,private val listener: WsListener) {
                 }catch (e:SocketTimeoutException){
                     continue
                 }
-                Thread{
-                    try{
-                        processConn(conn)
-                    }catch (e:Exception){
-                        Log.w(TAG,e)
-                    }finally {
-                        //关闭连接
-                        try{
-                            conn.close()
-                        }catch (_:Exception){}
-                        listener.onDisconnect()
-                    }
-                }.start()
+                processConn(conn)
             }
             //清理现场
             try {
@@ -94,37 +82,52 @@ class WsServer(private val auth:String,private val listener: WsListener) {
     }
 
     private fun processConn(conn:Socket){
-        val input=BufferedInputStream(conn.getInputStream())
-        val output=BufferedOutputStream(conn.getOutputStream())
-        //连接完成 接收请求行
-        val reqLine=readLine(input)
-        println(reqLine)
-        val reqArr=reqLine.split(' ')
-        if(reqArr.size!=3){
-            throw Exception("Bad request")
-        }
-        reqArr[0].let { method->
-            if(method=="GET"){
-                reqArr[1].let {uri->
-                    val path=checkUri(uri)
-                    if(path=="/zebChannel") {
-                        //处理ws
-                        processWs(input,output)
-                    }else if(path.startsWith("/blob/")){
-                        //处理get blob
-                        processGetBlob(path.substring(6),input, output)
+        Thread{
+            var wsConnection=false
+            try{
+                val input=BufferedInputStream(conn.getInputStream())
+                val output=BufferedOutputStream(conn.getOutputStream())
+                //连接完成 接收请求行
+                val reqLine=readLine(input)
+                val reqArr=reqLine.split(' ')
+                if(reqArr.size!=3){
+                    throw Exception("Bad request")
+                }
+                reqArr[0].let { method->
+                    if(method=="GET"){
+                        reqArr[1].let {uri->
+                            val path=checkUri(uri)
+                            if(path=="/zebChannel") {
+                                //处理ws
+                                wsConnection=true
+                                processWs(input,output)
+                            }else if(path.startsWith("/blob/")){
+                                //处理get blob
+                                processGetBlob(path.substring(6),input, output)
+                            }
+                        }
+                    }else if(method=="POST"){
+                        reqArr[1].let { uri->
+                            val path=checkUri(uri)
+                            if(path.startsWith("/blob/")){
+                                //处理put blob
+                                processPostBlob(path.substring(6),input,output)
+                            }
+                        }
                     }
                 }
-            }else if(method=="POST"){
-                reqArr[1].let { uri->
-                    val path=checkUri(uri)
-                    if(path.startsWith("/blob/")){
-                        //处理put blob
-                        processPostBlob(path.substring(6),input,output)
-                    }
+            }catch (e:Exception){
+                Log.w(TAG,e)
+            }finally {
+                //关闭连接
+                try{
+                    conn.close()
+                }catch (_:Exception){}
+                if(wsConnection){
+                    listener.onDisconnect()
                 }
             }
-        }
+        }.start()
     }
 
     private fun checkUri(path:String):String{
