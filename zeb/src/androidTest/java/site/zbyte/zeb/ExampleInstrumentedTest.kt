@@ -1,5 +1,6 @@
 package site.zbyte.zeb
 
+import android.net.Uri
 import android.util.Base64
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -23,10 +24,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        val promise= Promise<String>{
-            it.resolve("")
-        }
-        println(promise is Promise<*>)
     }
 
     @Test
@@ -52,5 +49,13 @@ class ExampleInstrumentedTest {
         val buf=ByteBuffer.allocate(8)
         buf.putDouble(10.24)
         println(buf.array().toStr())
+    }
+
+    @Test
+    fun testUri(){
+        val str="/zebChannel?auth=123456"
+        val uri= Uri.parse(str)
+        println(uri.path)
+        println(uri.getQueryParameter("auth"))
     }
 }

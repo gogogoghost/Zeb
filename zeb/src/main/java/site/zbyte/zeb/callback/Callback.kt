@@ -16,38 +16,28 @@ class Callback(
      * 调用该回调方法
      */
     fun call(vararg args:Any?):Promise<Any>{
-        val promise= Promise<Any>{}
-        zeb.appendResponse(object :Response{
-            override fun encode():ByteArray {
-                val b=ByteArrayOutputStream()
-                //1
-                b.write(Zeb.MsgType.CALLBACK.toInt())
-                //8 function
-                b.write(id.toByteArray())
-                //8 promise id
-                b.write(promise.getId().toByteArray())
-                //args
-                zeb.encodeArray(args,b)
-                return b.toByteArray()
-            }
-        })
+        val promise= Promise<Any>()
+
         zeb.savePromise(promise)
+        val b=ByteArrayOutputStream()
+        //1
+        b.write(Zeb.MsgType.CALLBACK.toInt())
+        //8 function
+        b.write(id.toByteArray())
+        //8 promise id
+        b.write(promise.getId().toByteArray())
+        //args
+        zeb.encodeArray(args,b)
+        zeb.sendFrame(b.toByteArray())
+
         return promise
     }
 
     protected fun finalize(){
-        zeb.appendResponse(object :Response{
-            override fun encode(): ByteArray {
-                val b=ByteArrayOutputStream()
-                b.write(Zeb.MsgType.RELEASE_CALLBACK.toInt())
-                b.write(id.toByteArray())
-                return b.toByteArray()
-            }
-        })
-    }
-
-    override fun isObject(): Boolean {
-        return false
+        val b=ByteArrayOutputStream()
+        b.write(Zeb.MsgType.RELEASE_CALLBACK.toInt())
+        b.write(id.toByteArray())
+        zeb.sendFrame(b.toByteArray())
     }
 
     override fun getId():Long {

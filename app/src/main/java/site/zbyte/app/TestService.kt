@@ -4,10 +4,10 @@ import android.webkit.JavascriptInterface
 import org.json.JSONObject
 import site.zbyte.zeb.callback.Callback
 import site.zbyte.zeb.callback.CallbackObject
-import site.zbyte.zeb.callback.Promise
-import site.zbyte.zeb.data.SharedObject
+import site.zbyte.zeb.data.Blob
+import site.zbyte.zeb.data.JsObject
 
-class TestService {
+class TestService:JsObject(true,true) {
 
     // js can read this field
     private var age=10
@@ -19,9 +19,7 @@ class TestService {
     }
 
     // return a SharedObject
-    private val innerObject = SharedObject(InnerCls())
-
-    class InnerCls{
+    private val innerObject = object :JsObject(){
         @JavascriptInterface
         fun innerFunction():String{
             return "inner function result"
@@ -29,7 +27,7 @@ class TestService {
     }
 
     @JavascriptInterface
-    fun getInnerObject():SharedObject{
+    fun getInnerObject():JsObject{
         return innerObject
     }
 
@@ -101,5 +99,20 @@ class TestService {
                 thread=null
             }
         }?.join()
+    }
+
+    private var tempBlob:Blob?=null
+
+    override fun onGetBlob(path: String): Blob? {
+        return if(path=="tempBlob"){
+            tempBlob
+        }else{
+            null
+        }
+    }
+
+    override fun onPostBlob(data: ByteArray): String {
+        tempBlob=Blob(data,"text/plain")
+        return "tempBlob"
     }
 }

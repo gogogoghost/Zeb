@@ -20,6 +20,6 @@ class ExampleUnitTest {
 
     @Test
     fun testBytes(){
-        println(Long.MAX_VALUE.toInt())
+        println("Hello world!".toByteArray().toStr())
     }
 }

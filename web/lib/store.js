@@ -4,3 +4,8 @@ export const functionMap = {}
 export const objectMap = {}
 //存储待pending的promise
 export const promiseMap = {}
+
+export const props = {
+  zebPort: null,
+  zebAuth: null
+}

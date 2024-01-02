@@ -3,10 +3,11 @@ import ByteBuffer from "bytebuffer";
 import { encodeArg, encodeArray, decodeArg, decodeArray } from "./data";
 import { createObject } from "./proxy";
 import { MsgType } from "./constant";
-import { promiseMap, functionMap, objectMap } from "./store";
+import { promiseMap, functionMap, objectMap, props } from "./store";
 import { Mutex } from 'async-mutex';
 
 const mutex = new Mutex();
+let apiInternal = null
 
 /**
  * 处理队列下来的消息
@@ -88,8 +89,6 @@ function finalizePromise (id, res) {
     send(buffer.toArrayBuffer())
 }
 
-let apiInternal = null
-
 export async function connect () {
     if (!window.zeb) {
         throw new Error("Zeb not found")
@@ -99,16 +98,16 @@ export async function connect () {
         if (apiInternal != null) {
             return apiInternal
         }
-        const auth = window.zeb.getAuth()
-        const port = window.zeb.getPort()
-        await connectZeb(auth, port)
+        props.zebAuth = window.zeb.getAuth()
+        props.zebPort = window.zeb.getPort()
+        await connectZeb(props.zebAuth, props.zebPort)
         onMessage((data) => {
             const buffer = ByteBuffer.wrap(data)
             processMessage(buffer)
         })
-        const baseApi = createObject(0, [], ["registerServiceWatcher"])
+        const baseApi = createObject(0, [], ["getService"])
         apiInternal = {}
-        const objList = await baseApi.registerServiceWatcher((name, obj) => {
+        const objList = await baseApi.getService((name, obj) => {
             apiInternal[name] = obj
         })
         for (const item of objList) {

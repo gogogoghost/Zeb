@@ -6,7 +6,6 @@ import android.webkit.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewAssetLoader
 import site.zbyte.zeb.Zeb
-import site.zbyte.zeb.data.SharedObject
 
 class MainActivity : AppCompatActivity() {
 
@@ -20,7 +19,7 @@ class MainActivity : AppCompatActivity() {
         val src=findViewById<WebView>(R.id.zv)
         val zv=Zeb(src)
 
-        zv.addJsObject("TestService", SharedObject(TestService(),true))
+        zv.addJsObject("TestService", TestService())
 
         val assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))

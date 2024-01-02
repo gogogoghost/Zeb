@@ -3,23 +3,23 @@ package site.zbyte.zeb
 import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.HandlerThread
+import android.util.Base64
 import android.webkit.*
 import org.json.JSONObject
 import site.zbyte.zeb.callback.Callback
 import site.zbyte.zeb.callback.CallbackObject
 import site.zbyte.zeb.callback.Promise
-import site.zbyte.zeb.callback.Response
 import site.zbyte.zeb.common.IdGenerator
 import site.zbyte.zeb.common.toByteArray
 import site.zbyte.zeb.common.toStr
-import site.zbyte.zeb.data.SharedObject
+import site.zbyte.zeb.data.Blob
+import site.zbyte.zeb.data.JsObject
 import site.zbyte.zeb.ws.IFrameSender
 import site.zbyte.zeb.ws.WsListener
 import site.zbyte.zeb.ws.WsServer
 import java.io.ByteArrayOutputStream
-import java.lang.StringBuilder
 import java.nio.ByteBuffer
-import kotlin.experimental.and
+import kotlin.random.Random
 
 @SuppressLint("SetJavaScriptEnabled")
 class Zeb(private val src:WebView):WsListener {
@@ -56,11 +56,10 @@ class Zeb(private val src:WebView):WsListener {
     }
 
 //    普通的js可调用对象
-    private val acrossObj=HashMap<Long,SharedObject>()
+    private val acrossObj=HashMap<Long,JsObject>()
 
     //_base对象
     private val baseService=BaseService()
-    private val baseJsObject=SharedObject(baseService)
 
 //    native侧的promise存储
     private val promiseMap=HashMap<Long,Promise<Any>>()
@@ -68,7 +67,7 @@ class Zeb(private val src:WebView):WsListener {
     private val zebAuth= if(BuildConfig.DEBUG)
         "zebAuth"
     else
-        IdGenerator.nextId().toByteArray().toStr()
+        Base64.encodeToString(Random.nextBytes(12),Base64.NO_WRAP.or(Base64.URL_SAFE))
     private val wsServer=WsServer(zebAuth,this)
     private val zebPort=wsServer.start()
 
@@ -83,7 +82,7 @@ class Zeb(private val src:WebView):WsListener {
     }
 
     //添加一个 命名对象供js调用
-    fun addJsObject(name:String, obj: SharedObject): Zeb {
+    fun addJsObject(name:String, obj: JsObject): Zeb {
         //发送给js
         baseService.onAdd(name,obj)
         return this
@@ -110,10 +109,8 @@ class Zeb(private val src:WebView):WsListener {
     /**
      * 调用js代码并且获取回调
      */
-    fun appendResponse(res:Response){
-        frameSender?.send(
-            res.encode()
-        )
+    fun sendFrame(frame:ByteArray){
+        frameSender?.send(frame)
     }
 
     fun savePromise(promise: Promise<Any>){
@@ -161,49 +158,6 @@ class Zeb(private val src:WebView):WsListener {
                 b.write(DataType.ARRAY.toInt())
                 encodeArray(arg,b)
             }
-            //promise
-//            is Promise<*> ->{
-//                arg.then {
-//                    appendResponse(object :Response{
-//                        override fun encode(): ByteArray {
-//                            val b2=ByteArrayOutputStream()
-//                            //1
-//                            b2.write(MsgType.PROMISE_FINISH.toByteArray())
-//                            //8
-//                            b2.write(arg.getId().toByteArray())
-//                            //success
-//                            b2.write(byteArrayOf(0x01))
-//                            encodeArg(it,b2)
-//                            return b2.toByteArray()
-//                        }
-//                    })
-//                }.catch {
-//                    appendResponse(object :Response{
-//                        override fun encode(): ByteArray {
-//                            val b2=ByteArrayOutputStream()
-//                            //1
-//                            b2.write(MsgType.PROMISE_FINISH.toByteArray())
-//                            //8
-//                            b2.write(arg.getId().toByteArray())
-//                            //fail
-//                            b2.write(byteArrayOf(0x00))
-//                            encodeArg(it,b2)
-//                            return b2.toByteArray()
-//                        }
-//                    })
-//                }
-//                b.write(DataType.PROMISE.toInt())
-//                b.write(arg.getId().toByteArray())
-//                //添加suspend
-////                arg.getSuspendCallback().forEach {
-////                    b.write(if(it.isObject()){
-////                        0x10 or 0x01
-////                    }else{
-////                        0x10 or 0x02
-////                    })
-////                    b.write(it.getToken().toByteArray())
-////                }
-//            }
             //bytearray
             is ByteArray->{
                 b.write(DataType.BYTEARRAY.toInt())
@@ -217,15 +171,15 @@ class Zeb(private val src:WebView):WsListener {
                 b.write(0)
             }
             //send object
-            is SharedObject ->{
-                val id = IdGenerator.nextId()
-                acrossObj[id]=arg
+            is JsObject ->{
+//                val id = IdGenerator.nextId()
+                acrossObj[arg.id]=arg
                 val fields=arg.getFields()
                 val methods=arg.getMethods()
                 //head 1
                 b.write(DataType.OBJECT.toInt())
                 //id 8
-                b.write(id.toByteArray())
+                b.write(arg.id.toByteArray())
                 //field
                 b.write(
                     fields.joinToString(",").toByteArray()
@@ -267,8 +221,7 @@ class Zeb(private val src:WebView):WsListener {
      * 输出：对象
      */
     private fun decodeArg(buffer: ByteBuffer):Any?{
-        val type=buffer.get()
-        return when(type){
+        return when(val type=buffer.get()){
             DataType.FUNCTION->{
                 //方法回调
                 val id=buffer.long
@@ -360,7 +313,7 @@ class Zeb(private val src:WebView):WsListener {
      */
     private fun callObject(promiseId:Long,id:Long,func:String,buffer:ByteBuffer){
         if(id==0L){
-            callObjectInternal(promiseId,baseJsObject,func, buffer)
+            callObjectInternal(promiseId,baseService,func, buffer)
         }else if(acrossObj.containsKey(id)){
             callObjectInternal(promiseId,acrossObj[id]!!,func, buffer)
         }else{
@@ -372,7 +325,7 @@ class Zeb(private val src:WebView):WsListener {
         }
     }
 
-    private fun callObjectInternal(promiseId: Long,obj:SharedObject, func:String, buffer:ByteBuffer){
+    private fun callObjectInternal(promiseId: Long, obj:JsObject, func:String, buffer:ByteBuffer){
         try{
             sendPromiseFinalize(
                 promiseId,
@@ -389,7 +342,7 @@ class Zeb(private val src:WebView):WsListener {
 
     private fun readObject(promiseId:Long,id:Long,name:String){
         if(id==0L){
-            readObjectInternal(promiseId,baseJsObject,name)
+            readObjectInternal(promiseId,baseService,name)
         }else if(acrossObj.containsKey(id)){
             readObjectInternal(promiseId,acrossObj[id]!!,name)
         }else{
@@ -401,7 +354,7 @@ class Zeb(private val src:WebView):WsListener {
         }
     }
 
-    private fun readObjectInternal(promiseId:Long,obj:SharedObject, name:String){
+    private fun readObjectInternal(promiseId:Long, obj:JsObject, name:String){
         try{
             sendPromiseFinalize(
                 promiseId,
@@ -462,6 +415,24 @@ class Zeb(private val src:WebView):WsListener {
                 finalizePromise(id,buffer)
             }
         }
+    }
+
+    override fun onGetBlob(path: String): Blob? {
+        //<serviceName>/<blobId>
+        val index=path.indexOf('/')
+        if(index<0){
+            return null
+        }
+        val id=path.substring(0 until index).toLong()
+        val name=path.substring(index+1)
+
+        val obj=acrossObj[id]?:return null
+        return obj.onGetBlob(name)
+    }
+
+    override fun onPostBlob(id:Long,data: ByteArray): String {
+        val obj=acrossObj[id]?:throw Exception("Object not found")
+        return obj.onPostBlob(data)
     }
 
     private fun ByteBuffer.readBytes(len:Int):ByteArray{

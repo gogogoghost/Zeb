@@ -6,38 +6,11 @@ import site.zbyte.zeb.common.IdGenerator
 
 class Promise<T>: PromiseCallback<T?> {
 
-    companion object{
-        //默认handler
-        private val jsThread= HandlerThread("promise").also {
-            it.start()
-        }
-        private val jsHandler= Handler(jsThread.looper)
-    }
-
     enum class State{
         Pending,
         Resolved,
         Rejected
     }
-
-    private val handler:Handler
-
-    constructor(processor:(PromiseCallback<T?>)->Unit):this(processor, jsHandler)
-
-    constructor(processor:(PromiseCallback<T?>)->Unit, handler:Handler) {
-        //初始化handler 并且执行promise
-        this.handler=handler
-        handler.post{
-            try{
-                processor.invoke(this)
-            }catch (e:Exception){
-                reject(e)
-            }
-        }
-    }
-
-    //promise执行期间，暂停的回调
-//    private val suspendCallback = HashSet<ICallback>()
 
     //标记promise状态
     private var state: State = State.Pending
@@ -59,32 +32,32 @@ class Promise<T>: PromiseCallback<T?> {
     private val lock = Object()
 
     //Native使用的then
-    fun then(callback:(T?)->Unit): Promise<T> {
-        synchronized(lock){
-            if(state== State.Pending){
-                thenFunctionList.add(callback)
-            }else if(state== State.Resolved){
-                handler.post{
-                    callback.invoke(thenResult)
-                }
-            }
-            return this
-        }
-    }
+//    fun then(callback:(T?)->Unit): Promise<T> {
+//        synchronized(lock){
+//            if(state== State.Pending){
+//                thenFunctionList.add(callback)
+//            }else if(state== State.Resolved){
+//                handler.post{
+//                    callback.invoke(thenResult)
+//                }
+//            }
+//            return this
+//        }
+//    }
 
     //Native使用的catch
-    fun catch(callback:(Exception?)->Unit): Promise<T> {
-        synchronized(lock){
-            if(state== State.Pending){
-                catchFunctionList.add(callback)
-            }else if(state== State.Rejected){
-                handler.post{
-                    callback.invoke(catchResult!!)
-                }
-            }
-            return this
-        }
-    }
+//    fun catch(callback:(Exception?)->Unit): Promise<T> {
+//        synchronized(lock){
+//            if(state== State.Pending){
+//                catchFunctionList.add(callback)
+//            }else if(state== State.Rejected){
+//                handler.post{
+//                    callback.invoke(catchResult!!)
+//                }
+//            }
+//            return this
+//        }
+//    }
 
     //获取当前promise状态
     fun getState(): State {

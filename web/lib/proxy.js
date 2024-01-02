@@ -3,13 +3,34 @@ import { nextId } from "./utils"
 import ByteBuffer from "bytebuffer"
 import { MsgType } from "./constant"
 import { encodeArray } from "./data"
-import { promiseMap } from "./store"
+import { promiseMap, props } from "./store"
 
 /**
  * 创建一个proxy代理的api
  */
 export function createObject (id, fieldList = [], funcList = []) {
-  let obj = {}
+  let obj = {
+    _zeb: {
+      createBlobUrl (name) {
+        return `http://127.0.0.1:${props.zebPort}/blob/${id}/${name}?auth=${props.zebAuth}`
+      },
+      getBlob (name) {
+        return fetch(this.createBlobUrl(name))
+      },
+      async postBlob (data) {
+        return (await fetch(
+          `http://127.0.0.1:${props.zebPort}/blob/${id}?auth=${props.zebAuth}`,
+          {
+            method: 'POST',
+            body: data,
+            headers: {
+              'Content-Type': 'text/plain'
+            }
+          }
+        )).text()
+      }
+    }
+  }
   //给field设置一个null占位置，后面会proxy
   fieldList.forEach((name) => {
     obj[name] = {
@@ -29,9 +50,8 @@ export function createObject (id, fieldList = [], funcList = []) {
           }
         })
       },
-      set (value) {
-
-      }
+      // set (value) {
+      // }
     }
   })
   funcList.forEach((name) => {

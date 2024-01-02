@@ -1,35 +1,39 @@
 package site.zbyte.zeb.data
 
 import android.webkit.JavascriptInterface
+import site.zbyte.zeb.common.IdGenerator
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 
-class SharedObject(
-    private val obj:Any,
+open class JsObject(
+    //include private member
     private val internal:Boolean=false,
+    //include no JavascriptInterface member
     private val unsafe:Boolean=false
 ) {
 
     private val fieldMap=HashMap<String,Field>()
     private val methodMap=HashMap<String,Method>()
 
+    val id= IdGenerator.nextId()
+
     init {
         if(internal){
-            obj.javaClass.declaredFields.forEach {
+            this.javaClass.declaredFields.forEach {
                 it.isAccessible=true
                 fieldMap[it.name] = it
             }
-            obj.javaClass.declaredMethods.forEach {
+            this.javaClass.declaredMethods.forEach {
                 if(unsafe||it.isAnnotationPresent(JavascriptInterface::class.java)){
                     it.isAccessible=true
                     methodMap[it.name]=it
                 }
             }
         }else{
-            obj.javaClass.fields.forEach {
+            this.javaClass.fields.forEach {
                 fieldMap[it.name] = it
             }
-            obj.javaClass.methods.forEach {
+            this.javaClass.methods.forEach {
                 if(unsafe||it.isAnnotationPresent(JavascriptInterface::class.java)){
                     methodMap[it.name]=it
                 }
@@ -49,11 +53,18 @@ class SharedObject(
         //js调用java方法，将js对象转为java对象
         val method = methodMap[name]?:throw Exception("No such method: $name")
         //执行函数
-        return method.invoke(obj, *args)
+        return method.invoke(this, *args)
     }
 
     fun getField(name:String):Any?{
         val field = fieldMap[name]?:throw Exception("No such field: $name")
-        return field.get(obj)
+        return field.get(this)
+    }
+
+    open fun onGetBlob(path:String):Blob?{
+        return null
+    }
+    open fun onPostBlob(data:ByteArray):String{
+        throw Exception("Not implement")
     }
 }

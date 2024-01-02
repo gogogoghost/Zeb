@@ -1,5 +1,6 @@
 package site.zbyte.zeb.ws
 
+import android.net.Uri
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
@@ -7,6 +8,9 @@ import android.util.Base64
 import android.util.Log
 import site.zbyte.zeb.BuildConfig
 import site.zbyte.zeb.common.toByteArray
+import site.zbyte.zeb.data.Blob
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -58,17 +62,19 @@ class WsServer(private val auth:String,private val listener: WsListener) {
                 }catch (e:SocketTimeoutException){
                     continue
                 }
-                try{
-                    processConn(conn)
-                }catch (e:Exception){
-                    Log.w(TAG,e)
-                }finally {
-                    //关闭连接
+                Thread{
                     try{
-                        conn.close()
-                    }catch (_:Exception){}
-                    listener.onDisconnect()
-                }
+                        processConn(conn)
+                    }catch (e:Exception){
+                        Log.w(TAG,e)
+                    }finally {
+                        //关闭连接
+                        try{
+                            conn.close()
+                        }catch (_:Exception){}
+                        listener.onDisconnect()
+                    }
+                }.start()
             }
             //清理现场
             try {
@@ -88,11 +94,92 @@ class WsServer(private val auth:String,private val listener: WsListener) {
     }
 
     private fun processConn(conn:Socket){
-        val input=conn.getInputStream()
-        val output=conn.getOutputStream()
+        val input=BufferedInputStream(conn.getInputStream())
+        val output=BufferedOutputStream(conn.getOutputStream())
         //连接完成 接收请求行
         val reqLine=readLine(input)
-        checkReqLine(reqLine)
+        println(reqLine)
+        val reqArr=reqLine.split(' ')
+        if(reqArr.size!=3){
+            throw Exception("Bad request")
+        }
+        reqArr[0].let { method->
+            if(method=="GET"){
+                reqArr[1].let {uri->
+                    val path=checkUri(uri)
+                    if(path=="/zebChannel") {
+                        //处理ws
+                        processWs(input,output)
+                    }else if(path.startsWith("/blob/")){
+                        //处理get blob
+                        processGetBlob(path.substring(6),input, output)
+                    }
+                }
+            }else if(method=="POST"){
+                reqArr[1].let { uri->
+                    val path=checkUri(uri)
+                    if(path.startsWith("/blob/")){
+                        //处理put blob
+                        processPostBlob(path.substring(6),input,output)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun checkUri(path:String):String{
+        val uri=Uri.parse(path)
+        if(uri.getQueryParameter("auth")!=auth){
+            throw Exception("Auth fail")
+        }
+        return uri.path!!
+    }
+
+    private fun processPostBlob(path:String,input: InputStream,output: OutputStream){
+        val header=readHeaders(input)
+        val length=header["Content-Length"]!!.toInt()
+        val buf=ByteArray(length)
+        input.read(buf)
+        val name=listener.onPostBlob(path.toLong(),buf)
+        sendBlob(Blob(name.toByteArray(),"text/plain"),output)
+    }
+
+    private fun processGetBlob(path:String,input: InputStream,output: OutputStream){
+        readHeaders(input)
+        val blob=listener.onGetBlob(path)
+        if(blob==null){
+            //404
+            send404(output)
+        }else{
+            //200
+            sendBlob(blob, output)
+        }
+    }
+
+    private fun sendBlob(blob: Blob,output: OutputStream){
+        output.write("HTTP/1.1 200 OK\r\n".toByteArray())
+        output.write("Content-Type: ${blob.mimeType?:"application/octet-stream"}\r\n".toByteArray())
+        output.write("Content-Length: ${blob.data.size}\r\n".toByteArray())
+        output.write("Connection: close\r\n".toByteArray())
+        writeCrossHeaders(output)
+        output.write("\r\n".toByteArray())
+        output.write(blob.data)
+        output.flush()
+    }
+
+    private fun send404(output: OutputStream){
+        output.write("HTTP/1.1 404 Not Found\r\n".toByteArray())
+        output.write("Connection: close\r\n".toByteArray())
+        writeCrossHeaders(output)
+        output.write("\r\n".toByteArray())
+        output.flush()
+    }
+
+    private fun writeCrossHeaders(output: OutputStream){
+        output.write("Access-Control-Allow-Origin: *\r\n".toByteArray())
+    }
+
+    private fun processWs(input:InputStream,output: OutputStream){
         //读取头部
         val headers=readHeaders(input)
         //验证头部
@@ -114,7 +201,6 @@ class WsServer(private val auth:String,private val listener: WsListener) {
         //启动接收数据循环
         while (true){
             val frame=readFrame(input)
-//            sender.send(frame)
             listener.onMessage(frame)
         }
     }
@@ -122,23 +208,20 @@ class WsServer(private val auth:String,private val listener: WsListener) {
     private fun sendFrame(frame:ByteArray,output: OutputStream){
         //1 字符
         //2 字节
-        val buffer=ByteArrayOutputStream()
-        buffer.write(0x82)
+        output.write(0x82)
         if(frame.size<=125){
             //单字节表示
-            buffer.write(frame.size)
+            output.write(frame.size)
         }else if(frame.size<=0xffff){
             //2字节表示
-            buffer.write(126)
-            buffer.write(frame.size.toByteArray().sliceArray(2..3))
+            output.write(126)
+            output.write(frame.size.toByteArray().sliceArray(2..3))
         }else{
             //8字节
-            buffer.write(127)
-            buffer.write(frame.size.toLong().toByteArray())
+            output.write(127)
+            output.write(frame.size.toLong().toByteArray())
         }
-        buffer.write(frame)
-        //缓冲区一次写入
-        output.write(buffer.toByteArray())
+        output.write(frame)
         output.flush()
     }
 
@@ -185,7 +268,10 @@ class WsServer(private val auth:String,private val listener: WsListener) {
             val data=if(mask){
                 val maskBytes=input.readBytes(4)
                 val data=input.readBytes(length)
-                processMask(maskBytes,data)
+                for(i in data.indices){
+                    data[i]=data[i].xor(maskBytes[i%4])
+                }
+                data
             }else{
                 input.readBytes(length)
             }
@@ -197,19 +283,13 @@ class WsServer(private val auth:String,private val listener: WsListener) {
 
     }
 
-    private fun processMask(mask:ByteArray,data:ByteArray):ByteArray{
-        for(i in data.indices){
-            data[i]=data[i].xor(mask[i%4])
-        }
-        return data
-    }
-
     private fun sendAccept(str:String,output:OutputStream){
         output.write("HTTP/1.1 101 Switching Protocols\r\n".toByteArray())
         output.write("Upgrade: websocket\r\n".toByteArray())
         output.write("Connection: Upgrade\r\n".toByteArray())
         output.write("Sec-WebSocket-Accept: $str\r\n".toByteArray())
         output.write("\r\n".toByteArray())
+        output.flush()
     }
 
     private fun genAccept(sec:String):String{
@@ -237,18 +317,6 @@ class WsServer(private val auth:String,private val listener: WsListener) {
                 header[line.substring(0,index).trim()]=line.substring(index+1).trim()
             }else{
                 return header
-            }
-        }
-    }
-
-    private fun checkReqLine(reqLine:String){
-        val reqArr=reqLine.split(' ')
-        if(reqArr.size!=3){
-            throw Exception("Bad request")
-        }
-        reqArr[1].let {
-            if(it!="/$auth"){
-                throw Exception("Auth fail")
             }
         }
     }
