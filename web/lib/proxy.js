@@ -1,5 +1,5 @@
 import { send } from "./ws"
-import { nextId } from "./utils"
+import { promiseIdGen } from "./utils"
 import ByteBuffer from "bytebuffer"
 import { MsgType } from "./constant"
 import { encodeArray } from "./data"
@@ -36,11 +36,11 @@ export function createObject (id, fieldList = [], funcList = []) {
     obj[name] = {
       get () {
         return new Promise((resolve, reject) => {
-          const promiseId = nextId()
+          const promiseId = promiseIdGen.nextId()
           const buffer = new ByteBuffer()
           buffer.writeByte(MsgType.READ_OBJECT)
-          buffer.writeLong(promiseId)
-          buffer.writeLong(id)
+          buffer.writeInt(promiseId)
+          buffer.writeInt(id)
           buffer.writeCString(name)
           buffer.flip()
           send(buffer.toArrayBuffer())
@@ -58,11 +58,11 @@ export function createObject (id, fieldList = [], funcList = []) {
     obj[name] = function () {
       //调用该方法
       return new Promise((resolve, reject) => {
-        const promiseId = nextId()
+        const promiseId = promiseIdGen.nextId()
         const buffer = new ByteBuffer()
         buffer.writeByte(MsgType.CALL_OBJECT)
-        buffer.writeLong(promiseId)
-        buffer.writeLong(id)
+        buffer.writeInt(promiseId)
+        buffer.writeInt(id)
         buffer.writeCString(name)
         encodeArray(arguments, buffer)
         buffer.flip()

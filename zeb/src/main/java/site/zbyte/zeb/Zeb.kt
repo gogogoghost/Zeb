@@ -10,7 +10,8 @@ import org.json.JSONObject
 import site.zbyte.zeb.callback.Callback
 import site.zbyte.zeb.callback.CallbackObject
 import site.zbyte.zeb.callback.Promise
-import site.zbyte.zeb.common.IdGenerator
+import site.zbyte.zeb.common.readBytes
+import site.zbyte.zeb.common.readString
 import site.zbyte.zeb.common.toByteArray
 import site.zbyte.zeb.common.toStr
 import site.zbyte.zeb.data.Blob
@@ -60,14 +61,13 @@ class Zeb(private val src:WebView):WsListener {
         const val JSON:Byte=16
     }
 
-//    普通的js可调用对象
-    private val acrossObj=HashMap<Long,JsObject>()
+    //    普通的js可调用对象
+    private val acrossObj=HashMap<Int,JsObject>()
+    //    native侧的promise存储
+    private val promiseMap=HashMap<Int,Promise<Any>>()
 
     //_base对象
     private val baseService=BaseService()
-
-//    native侧的promise存储
-    private val promiseMap=HashMap<Long,Promise<Any>>()
 
     private val zebAuth= if(BuildConfig.DEBUG)
         "zebAuth"
@@ -231,12 +231,12 @@ class Zeb(private val src:WebView):WsListener {
         return when(val type=buffer.get()){
             DataType.FUNCTION->{
                 //方法回调
-                val id=buffer.long
+                val id=buffer.getInt()
                 Callback(this@Zeb,id)
             }
             DataType.OBJECT->{
                 //带有回调的对象
-                val id=buffer.long
+                val id=buffer.getInt()
                 CallbackObject(this@Zeb,id)
             }
             DataType.BYTEARRAY->{
@@ -302,9 +302,16 @@ class Zeb(private val src:WebView):WsListener {
     override fun onDisconnect() {
         Log.w(TAG,"Connection closed")
         frameSender=null
+        //清空存储的对象
+        acrossObj.clear()
+        //释放promise
+        promiseMap.values.forEach {
+            it.reject(Exception("Connection closed"))
+        }
+        promiseMap.clear()
     }
 
-    private fun sendPromiseFinalize(promiseId:Long,success:Boolean,arg:Any?){
+    private fun sendPromiseFinalize(promiseId:Int,success:Boolean,arg:Any?){
         val b2=ByteArrayOutputStream()
         //1
         b2.write(MsgType.PROMISE_FINISH.toByteArray())
@@ -319,8 +326,8 @@ class Zeb(private val src:WebView):WsListener {
     /**
      * 调用对象，id为空则为调用baseObject
      */
-    private fun callObject(promiseId:Long,id:Long,func:String,buffer:ByteBuffer){
-        if(id==0L){
+    private fun callObject(promiseId:Int,id:Int,func:String,buffer:ByteBuffer){
+        if(id==0){
             callObjectInternal(promiseId,baseService,func, buffer)
         }else if(acrossObj.containsKey(id)){
             callObjectInternal(promiseId,acrossObj[id]!!,func, buffer)
@@ -333,7 +340,7 @@ class Zeb(private val src:WebView):WsListener {
         }
     }
 
-    private fun callObjectInternal(promiseId: Long, obj:JsObject, func:String, buffer:ByteBuffer){
+    private fun callObjectInternal(promiseId: Int, obj:JsObject, func:String, buffer:ByteBuffer){
         try{
             sendPromiseFinalize(
                 promiseId,
@@ -348,8 +355,8 @@ class Zeb(private val src:WebView):WsListener {
         }
     }
 
-    private fun readObject(promiseId:Long,id:Long,name:String){
-        if(id==0L){
+    private fun readObject(promiseId:Int,id:Int,name:String){
+        if(id==0){
             readObjectInternal(promiseId,baseService,name)
         }else if(acrossObj.containsKey(id)){
             readObjectInternal(promiseId,acrossObj[id]!!,name)
@@ -362,7 +369,7 @@ class Zeb(private val src:WebView):WsListener {
         }
     }
 
-    private fun readObjectInternal(promiseId:Long, obj:JsObject, name:String){
+    private fun readObjectInternal(promiseId:Int, obj:JsObject, name:String){
         try{
             sendPromiseFinalize(
                 promiseId,
@@ -375,11 +382,13 @@ class Zeb(private val src:WebView):WsListener {
         }
     }
 
-    private fun releaseObject(id:Long){
+    @Synchronized
+    private fun releaseObject(id:Int){
         acrossObj.remove(id)
     }
 
-    private fun finalizePromise(id:Long,buffer: ByteBuffer){
+    @Synchronized
+    private fun finalizePromise(id:Int,buffer: ByteBuffer){
         promiseMap[id]?.run {
             val res = decodeArg(buffer)
             if(res is Exception){
@@ -396,8 +405,8 @@ class Zeb(private val src:WebView):WsListener {
         when(buffer.get()){
             MsgType.CALL_OBJECT->{
                 //callObject
-                val promiseId=buffer.long
-                val objId=buffer.long
+                val promiseId=buffer.getInt()
+                val objId=buffer.getInt()
                 val funcName=buffer.readString()
                 handler.post{
                     callObject(promiseId,objId,funcName,buffer)
@@ -405,8 +414,8 @@ class Zeb(private val src:WebView):WsListener {
             }
             MsgType.READ_OBJECT->{
                 //readObject
-                val promiseId=buffer.long
-                val objectId=buffer.long
+                val promiseId=buffer.getInt()
+                val objectId=buffer.getInt()
                 val fieldName=buffer.readString()
                 handler.post{
                     readObject(promiseId,objectId,fieldName)
@@ -414,12 +423,12 @@ class Zeb(private val src:WebView):WsListener {
             }
             MsgType.RELEASE_OBJECT->{
                 //releaseObject
-                val id=buffer.long
+                val id=buffer.getInt()
                 releaseObject(id)
             }
             MsgType.PROMISE_FINISH->{
                 //finalizePromise
-                val id=buffer.long
+                val id=buffer.getInt()
                 finalizePromise(id,buffer)
             }
         }
@@ -431,37 +440,15 @@ class Zeb(private val src:WebView):WsListener {
         if(index<0){
             return null
         }
-        val id=path.substring(0 until index).toLong()
+        val id=path.substring(0 until index).toInt()
         val name=path.substring(index+1)
 
         val obj=acrossObj[id]?:return null
         return obj.onGetBlob(name)
     }
 
-    override fun onPostBlob(id:Long,data: ByteArray): String {
+    override fun onPostBlob(id:Int,data: ByteArray): String {
         val obj=acrossObj[id]?:throw Exception("Object not found")
         return obj.onPostBlob(data)
-    }
-
-    private fun ByteBuffer.readBytes(len:Int):ByteArray{
-        val buf=ByteArray(len)
-        this.get(buf)
-        return buf
-    }
-
-    private fun ByteBuffer.readString(len:Int):String{
-        return String(this.readBytes(len))
-    }
-
-    private fun ByteBuffer.readString():String{
-        var count=1
-        while(this.get(this.position()+count)!=0x00.toByte()){
-            count++
-        }
-        val res=if(count==1) "" else{
-            this.readString(count)
-        }
-        this.position(this.position()+1)
-        return res
     }
 }

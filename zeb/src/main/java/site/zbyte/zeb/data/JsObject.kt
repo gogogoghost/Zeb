@@ -12,10 +12,14 @@ open class JsObject(
     private val unsafe:Boolean=false
 ) {
 
+    companion object{
+        private val idGenerator=IdGenerator()
+    }
+
     private val fieldMap=HashMap<String,Field>()
     private val methodMap=HashMap<String,Method>()
 
-    val id= IdGenerator.nextId()
+    val id= idGenerator.nextId()
 
     init {
         if(internal){

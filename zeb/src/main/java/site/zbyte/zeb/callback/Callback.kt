@@ -9,7 +9,7 @@ import java.io.ByteArrayOutputStream
  */
 class Callback(
     private val zeb: Zeb,
-    private val id: Long
+    private val id: Int
 ):ICallback {
 
     /**
@@ -40,7 +40,7 @@ class Callback(
         zeb.sendFrame(b.toByteArray())
     }
 
-    override fun getId():Long {
+    override fun getId():Int {
         return id
     }
 }

@@ -1,16 +1,12 @@
 package site.zbyte.zeb.common
 
-object IdGenerator {
-    private const val MIN=1L
-    private const val MAX=0x1fffffffffffff
-
-    private var current= 0L
-
+class IdGenerator {
+    private var current= 0
     @Synchronized
-    fun nextId():Long{
+    fun nextId():Int{
         current++
-        if(current>= MAX){
-            current= MIN
+        if(current>= Int.MAX_VALUE){
+            current= 1
         }
         return current
     }

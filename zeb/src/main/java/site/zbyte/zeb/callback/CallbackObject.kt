@@ -6,7 +6,7 @@ import java.io.ByteArrayOutputStream
 
 class CallbackObject(
     private val zeb: Zeb,
-    private val id:Long):ICallback {
+    private val id:Int):ICallback {
 
     /**
      * 调用该对象内的方法
@@ -38,7 +38,7 @@ class CallbackObject(
         zeb.sendFrame(b.toByteArray())
     }
 
-    override fun getId(): Long {
+    override fun getId(): Int {
         return id
     }
 }

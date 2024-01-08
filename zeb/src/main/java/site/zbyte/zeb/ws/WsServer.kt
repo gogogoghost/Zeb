@@ -143,7 +143,7 @@ class WsServer(private val auth:String,private val listener: WsListener) {
         val length=header["Content-Length"]!!.toInt()
         val buf=ByteArray(length)
         input.read(buf)
-        val name=listener.onPostBlob(path.toLong(),buf)
+        val name=listener.onPostBlob(path.toInt(),buf)
         sendBlob(Blob(name.toByteArray(),"text/plain"),output)
     }
 
@@ -193,10 +193,12 @@ class WsServer(private val auth:String,private val listener: WsListener) {
         //连接完成
         val sender=object :IFrameSender{
             override fun send(msg: ByteArray) {
-                try{
-                    sendFrame(msg,output)
-                }catch (e:Exception){
-                    Log.w(TAG,e)
+                synchronized(this){
+                    try{
+                        sendFrame(msg,output)
+                    }catch (e:Exception){
+                        Log.w(TAG,e)
+                    }
                 }
             }
         }

@@ -8,5 +8,5 @@ interface WsListener {
     fun onDisconnect()
     fun onMessage(data:ByteArray)
     fun onGetBlob(path:String):Blob?
-    fun onPostBlob(id:Long,data: ByteArray):String
+    fun onPostBlob(id:Int,data: ByteArray):String
 }

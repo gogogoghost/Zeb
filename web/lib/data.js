@@ -1,6 +1,6 @@
 import ByteBuffer from "bytebuffer"
-import { nextId } from "./utils"
-import { functionMap, promiseMap, objectMap } from './store'
+import { callbackIdGen, objIdGen } from "./utils"
+import { functionMap, objectMap } from './store'
 import { createObject } from "./proxy"
 import { DataType, MsgType } from "./constant"
 import { send } from "./ws"
@@ -80,17 +80,17 @@ export function encodeArg (arg, buffer = new ByteBuffer()) {
     buffer.writeInt(arg.length)
     buffer.writeString(arg)
   } else if (c == Function) {
-    const id = nextId()
+    const id = callbackIdGen.nextId()
     functionMap[id] = arg
     buffer.writeByte(DataType.FUNCTION)
-    buffer.writeLong(id)
+    buffer.writeInt(id)
   } else if (c == Object) {
     //判断对象内有没有方法
     if (isObjHasFunction(arg)) {
-      const id = nextId()
+      const id = objIdGen.nextId()
       objectMap[id] = arg
       buffer.writeByte(DataType.OBJECT)
-      buffer.writeLong(id)
+      buffer.writeInt(id)
     } else {
       //当成数据对象传递
       buffer.writeByte(DataType.JSON)
@@ -155,7 +155,7 @@ export function decodeArg (buffer, throwErr = true) {
       return buffer.readDouble()
     case DataType.OBJECT:
       //8字节长的id
-      const objectId = buffer.readLong()
+      const objectId = buffer.readInt()
       const fieldRaw = buffer.readCString()
       const funcRaw = buffer.readCString()
 

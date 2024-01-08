@@ -6,6 +6,10 @@ import site.zbyte.zeb.common.IdGenerator
 
 class Promise<T>: PromiseCallback<T?> {
 
+    companion object{
+        private val idGenerator=IdGenerator()
+    }
+
     enum class State{
         Pending,
         Resolved,
@@ -26,7 +30,7 @@ class Promise<T>: PromiseCallback<T?> {
     private var catchResult:Exception?=null
 
     //随机生成promise id
-    private val id = IdGenerator.nextId()
+    private val id = idGenerator.nextId()
 
     //锁
     private val lock = Object()
@@ -67,7 +71,7 @@ class Promise<T>: PromiseCallback<T?> {
     }
 
     //获取该promiseID
-    fun getId():Long{
+    fun getId():Int{
         return id
     }
 

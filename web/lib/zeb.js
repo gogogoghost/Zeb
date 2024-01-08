@@ -18,8 +18,8 @@ async function processMessage (buffer) {
         case MsgType.CALLBACK:
             {
                 // 调用回调
-                const callbackId = buffer.readLong()
-                const promiseId = buffer.readLong()
+                const callbackId = buffer.readInt()
+                const promiseId = buffer.readInt()
                 const args = decodeArray(buffer)
                 const func = functionMap[callbackId]
                 if (func) {
@@ -31,9 +31,9 @@ async function processMessage (buffer) {
         case MsgType.OBJECT_CALLBACK:
             {
                 //调用对象内的回调
-                const objId = buffer.readLong()
+                const objId = buffer.readInt()
                 const funcName = buffer.readCString()
-                const promiseId = buffer.readLong()
+                const promiseId = buffer.readInt()
                 const args = decodeArray(buffer)
                 const obj = objectMap[objId]
                 if (obj) {
@@ -48,21 +48,21 @@ async function processMessage (buffer) {
         case MsgType.RELEASE_CALLBACK:
             {
                 //释放方法
-                const id = buffer.readLong()
+                const id = buffer.readInt()
                 delete functionMap[id]
             }
             break
         case MsgType.RELEASE_OBJECT:
             {
                 //释放对象
-                const id = buffer.readLong()
+                const id = buffer.readInt()
                 delete objectMap[id]
             }
             break
         case MsgType.PROMISE_FINISH:
             {
                 //promise finalize
-                const id = buffer.readLong()
+                const id = buffer.readInt()
                 const success = buffer.readByte() == 1
                 const arg = decodeArg(buffer)
 
@@ -83,7 +83,7 @@ async function processMessage (buffer) {
 function finalizePromise (id, res) {
     const buffer = new ByteBuffer()
     buffer.writeByte(MsgType.PROMISE_FINISH)
-    buffer.writeLong(id)
+    buffer.writeInt(id)
     encodeArg(res, buffer)
     buffer.flip()
     send(buffer.toArrayBuffer())

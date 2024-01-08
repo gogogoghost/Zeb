@@ -1,12 +1,19 @@
-let currentId = 0
-//获取ID
-export function nextId () {
-    currentId++
-    if (currentId >= Number.MAX_SAFE_INTEGER) {
-        currentId = 1
+function IdGnerator () {
+    let currentId = 0
+    return {
+        nextId () {
+            currentId++
+            if (currentId >= 2147483647) {
+                currentId = 1
+            }
+            return currentId
+        }
     }
-    return currentId
 }
+
+export const promiseIdGen = new IdGnerator()
+export const objIdGen = new IdGnerator()
+export const callbackIdGen = new IdGnerator()
 
 export function arrayBufferToHex (arrayBuffer) {
     const uint8Array = new Uint8Array(arrayBuffer);

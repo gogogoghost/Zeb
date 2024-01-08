@@ -45,6 +45,28 @@ fun ByteArray.toStr(): String {
     return sb.toString()
 }
 
+fun ByteBuffer.readBytes(len:Int):ByteArray{
+    val buf=ByteArray(len)
+    this.get(buf)
+    return buf
+}
+
+fun ByteBuffer.readString(len:Int):String{
+    return String(this.readBytes(len))
+}
+
+fun ByteBuffer.readString():String {
+    var count = 1
+    while (this.get(this.position() + count) != 0x00.toByte()) {
+        count++
+    }
+    val res = if (count == 1) "" else {
+        this.readString(count)
+    }
+    this.position(this.position() + 1)
+    return res
+}
+
 fun Exception.toStr():String{
     var throwable:Throwable?=this
     var msg = ""

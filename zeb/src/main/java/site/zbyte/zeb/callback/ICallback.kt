@@ -1,5 +1,5 @@
 package site.zbyte.zeb.callback
 
 interface ICallback {
-    fun getId():Long
+    fun getId():Int
 }
